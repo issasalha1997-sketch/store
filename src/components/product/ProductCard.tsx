@@ -22,6 +22,7 @@ interface ProductCardProps {
   cheapestStore: { name: string; slug: string } | null;
   isOnSale: boolean;
   category?: string | null;
+  priceCount?: number;
 }
 
 export function ProductCard({
@@ -35,6 +36,7 @@ export function ProductCard({
   maxPrice,
   cheapestStore,
   isOnSale,
+  priceCount,
 }: ProductCardProps) {
   const addItem = useBasket((s) => s.addItem);
 
@@ -100,23 +102,40 @@ export function ProductCard({
           )}
 
           {/* Price range */}
-          <div className="mt-3 flex items-end justify-between">
-            <div>
-              <p className="text-lg font-bold text-green-600">
-                {formatPrice(minPrice)}
-              </p>
-              {minPrice !== maxPrice && (
-                <p className="text-xs text-muted-foreground">
-                  to {formatPrice(maxPrice)}
+          <div className="mt-3">
+            <div className="flex items-end justify-between">
+              <div>
+                <p className="text-lg font-bold text-green-600">
+                  {formatPrice(minPrice)}
                 </p>
+                {minPrice !== maxPrice && (
+                  <p className="text-xs text-muted-foreground">
+                    to {formatPrice(maxPrice)}
+                  </p>
+                )}
+              </div>
+              {cheapestStore && (
+                <div className="flex items-center gap-1.5">
+                  <StoreLogo
+                    slug={cheapestStore.slug}
+                    name={cheapestStore.name}
+                    size="sm"
+                  />
+                  <span className="text-[10px] text-muted-foreground hidden sm:inline">
+                    {cheapestStore.name}
+                  </span>
+                </div>
               )}
             </div>
-            {cheapestStore && (
-              <StoreLogo
-                slug={cheapestStore.slug}
-                name={cheapestStore.name}
-                size="sm"
-              />
+            {minPrice !== maxPrice && (
+              <p className="mt-1 text-[10px] text-green-600 font-medium">
+                Save {formatPrice(maxPrice - minPrice)} vs most expensive
+              </p>
+            )}
+            {priceCount && priceCount > 1 && (
+              <p className="text-[10px] text-muted-foreground">
+                Compared at {priceCount} stores — click to see all
+              </p>
             )}
           </div>
 

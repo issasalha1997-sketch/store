@@ -145,8 +145,13 @@ function SearchContent() {
                     weightUnit={product.weightUnit as string | null}
                     minPrice={product.minPrice as number}
                     maxPrice={product.maxPrice as number}
-                    cheapestStore={product.cheapestStore as { name: string; slug: string } | null}
-                    isOnSale={product.isOnSale as boolean}
+                    cheapestStore={
+                      product.cheapestStore
+                        ? (product.cheapestStore as { store: { name: string; slug: string } }).store
+                        : null
+                    }
+                    isOnSale={!!(product.cheapestStore as { isOnSale?: boolean })?.isOnSale}
+                    priceCount={product.priceCount as number}
                     category={null}
                   />
                 ))}
