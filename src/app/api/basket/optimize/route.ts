@@ -84,7 +84,21 @@ export async function POST(request: NextRequest) {
 
     const result = optimizeBasket(basketInput);
 
-    return NextResponse.json(result);
+    // Also return all per-item prices for the comparison grid
+    const itemPrices = basketInput.map((item) => ({
+      productId: item.productId,
+      productName: item.productName,
+      quantity: item.quantity,
+      prices: item.prices.map((p) => ({
+        storeId: p.storeId,
+        storeName: p.storeName,
+        storeSlug: p.storeSlug,
+        storeColor: p.storeColor,
+        price: p.price,
+      })),
+    }));
+
+    return NextResponse.json({ ...result, itemPrices });
   } catch (error) {
     if (error instanceof SyntaxError) {
       return NextResponse.json(

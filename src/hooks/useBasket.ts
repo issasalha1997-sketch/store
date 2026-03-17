@@ -16,17 +16,30 @@ export interface BasketItem {
 
 interface BasketStore {
   items: BasketItem[];
+  preferredStores: Record<string, string>;
   addItem: (item: Omit<BasketItem, "quantity">) => void;
   removeItem: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearBasket: () => void;
   itemCount: () => number;
+  setPreferredStore: (productId: string, storeId: string) => void;
+  clearPreferredStore: (productId: string) => void;
 }
 
 export const useBasket = create<BasketStore>()(
   persist(
     (set, get) => ({
       items: [],
+      preferredStores: {} as Record<string, string>,
+      setPreferredStore: (productId: string, storeId: string) =>
+        set((state) => ({
+          preferredStores: { ...state.preferredStores, [productId]: storeId },
+        })),
+      clearPreferredStore: (productId: string) =>
+        set((state) => {
+          const { [productId]: _, ...rest } = state.preferredStores;
+          return { preferredStores: rest };
+        }),
       addItem: (item) =>
         set((state) => {
           const existing = state.items.find((i) => i.productId === item.productId);

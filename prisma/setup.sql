@@ -309,314 +309,334 @@ INSERT INTO "Product" ("id", "name", "slug", "brand", "weight", "weightUnit", "c
 
 -- Prices (37 products x 5 stores = 185 price records)
 -- Format: id, productId, storeId, price, unitPrice, unitPriceUnit
+-- Cheapest store varies by category:
+--   Aldi: dairy, fruits & veg | Tesco: branded items | Dunnes: meat
+--   Lidl: bakery, frozen | SuperValu: baby, personal care, some household
 
--- Avonmore Full Fat Milk 2L (per l)
+-- Avonmore Full Fat Milk 2L (per l) — Aldi cheapest (dairy)
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_1_t', 'prod_1', 'store_tesco', 2.19, 1.0950, 'per l'),
-('price_1_d', 'prod_1', 'store_dunnes', 2.09, 1.0450, 'per l'),
-('price_1_l', 'prod_1', 'store_lidl', 1.89, 0.9450, 'per l'),
+('price_1_t', 'prod_1', 'store_tesco', 2.09, 1.0450, 'per l'),
+('price_1_d', 'prod_1', 'store_dunnes', 2.15, 1.0750, 'per l'),
+('price_1_l', 'prod_1', 'store_lidl', 1.99, 0.9950, 'per l'),
 ('price_1_a', 'prod_1', 'store_aldi', 1.85, 0.9250, 'per l'),
-('price_1_s', 'prod_1', 'store_supervalu', 2.15, 1.0750, 'per l');
+('price_1_s', 'prod_1', 'store_supervalu', 2.19, 1.0950, 'per l');
 
--- Kerrygold Irish Butter 250g (per kg)
+-- Kerrygold Irish Butter 250g (per kg) — Aldi cheapest (dairy)
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_2_t', 'prod_2', 'store_tesco', 3.49, 13.9600, 'per kg'),
-('price_2_d', 'prod_2', 'store_dunnes', 3.29, 13.1600, 'per kg'),
-('price_2_l', 'prod_2', 'store_lidl', 2.99, 11.9600, 'per kg'),
+('price_2_t', 'prod_2', 'store_tesco', 3.29, 13.1600, 'per kg'),
+('price_2_d', 'prod_2', 'store_dunnes', 3.39, 13.5600, 'per kg'),
+('price_2_l', 'prod_2', 'store_lidl', 3.15, 12.6000, 'per kg'),
 ('price_2_a', 'prod_2', 'store_aldi', 2.99, 11.9600, 'per kg'),
-('price_2_s', 'prod_2', 'store_supervalu', 3.39, 13.5600, 'per kg');
+('price_2_s', 'prod_2', 'store_supervalu', 3.45, 13.8000, 'per kg');
 
--- Free Range Eggs Large 12 Pack (per unit)
+-- Free Range Eggs Large 12 Pack (per unit) — Aldi cheapest (dairy)
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_3_t', 'prod_3', 'store_tesco', 4.29, 0.3575, 'per unit'),
+('price_3_t', 'prod_3', 'store_tesco', 3.89, 0.3242, 'per unit'),
 ('price_3_d', 'prod_3', 'store_dunnes', 3.99, 0.3325, 'per unit'),
-('price_3_l', 'prod_3', 'store_lidl', 3.49, 0.2908, 'per unit'),
-('price_3_a', 'prod_3', 'store_aldi', 3.39, 0.2825, 'per unit'),
-('price_3_s', 'prod_3', 'store_supervalu', 4.19, 0.3492, 'per unit');
+('price_3_l', 'prod_3', 'store_lidl', 3.69, 0.3075, 'per unit'),
+('price_3_a', 'prod_3', 'store_aldi', 3.49, 0.2908, 'per unit'),
+('price_3_s', 'prod_3', 'store_supervalu', 4.09, 0.3408, 'per unit');
 
--- Cheddar Cheese Block 200g (per kg)
+-- Cheddar Cheese Block 200g (per kg) — Aldi cheapest (dairy), close prices
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_4_t', 'prod_4', 'store_tesco', 2.99, 14.9500, 'per kg'),
-('price_4_d', 'prod_4', 'store_dunnes', 2.79, 13.9500, 'per kg'),
-('price_4_l', 'prod_4', 'store_lidl', 2.49, 12.4500, 'per kg'),
-('price_4_a', 'prod_4', 'store_aldi', 2.39, 11.9500, 'per kg'),
-('price_4_s', 'prod_4', 'store_supervalu', 2.89, 14.4500, 'per kg');
+('price_4_t', 'prod_4', 'store_tesco', 2.59, 12.9500, 'per kg'),
+('price_4_d', 'prod_4', 'store_dunnes', 2.69, 13.4500, 'per kg'),
+('price_4_l', 'prod_4', 'store_lidl', 2.55, 12.7500, 'per kg'),
+('price_4_a', 'prod_4', 'store_aldi', 2.45, 12.2500, 'per kg'),
+('price_4_s', 'prod_4', 'store_supervalu', 2.79, 13.9500, 'per kg');
 
--- Greek Style Yoghurt 500g (per kg)
+-- Greek Style Yoghurt 500g (per kg) — Aldi cheapest (dairy)
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_5_t', 'prod_5', 'store_tesco', 2.49, 4.9800, 'per kg'),
-('price_5_d', 'prod_5', 'store_dunnes', 2.39, 4.7800, 'per kg'),
-('price_5_l', 'prod_5', 'store_lidl', 1.99, 3.9800, 'per kg'),
+('price_5_t', 'prod_5', 'store_tesco', 2.29, 4.5800, 'per kg'),
+('price_5_d', 'prod_5', 'store_dunnes', 2.19, 4.3800, 'per kg'),
+('price_5_l', 'prod_5', 'store_lidl', 2.09, 4.1800, 'per kg'),
 ('price_5_a', 'prod_5', 'store_aldi', 1.89, 3.7800, 'per kg'),
-('price_5_s', 'prod_5', 'store_supervalu', 2.45, 4.9000, 'per kg');
+('price_5_s', 'prod_5', 'store_supervalu', 2.35, 4.7000, 'per kg');
 
--- Irish Chicken Breast Fillets 500g (per kg)
+-- Irish Chicken Breast Fillets 500g (per kg) — Dunnes cheapest (meat), big gap
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_6_t', 'prod_6', 'store_tesco', 6.49, 12.9800, 'per kg'),
-('price_6_d', 'prod_6', 'store_dunnes', 5.99, 11.9800, 'per kg'),
-('price_6_l', 'prod_6', 'store_lidl', 5.49, 10.9800, 'per kg'),
-('price_6_a', 'prod_6', 'store_aldi', 5.29, 10.5800, 'per kg'),
+('price_6_t', 'prod_6', 'store_tesco', 5.99, 11.9800, 'per kg'),
+('price_6_d', 'prod_6', 'store_dunnes', 5.29, 10.5800, 'per kg'),
+('price_6_l', 'prod_6', 'store_lidl', 5.79, 11.5800, 'per kg'),
+('price_6_a', 'prod_6', 'store_aldi', 5.69, 11.3800, 'per kg'),
 ('price_6_s', 'prod_6', 'store_supervalu', 6.29, 12.5800, 'per kg');
 
--- Irish Lean Mince Beef 500g (per kg)
+-- Irish Lean Mince Beef 500g (per kg) — Dunnes cheapest (meat)
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_7_t', 'prod_7', 'store_tesco', 5.99, 11.9800, 'per kg'),
-('price_7_d', 'prod_7', 'store_dunnes', 5.49, 10.9800, 'per kg'),
-('price_7_l', 'prod_7', 'store_lidl', 4.99, 9.9800, 'per kg'),
-('price_7_a', 'prod_7', 'store_aldi', 4.89, 9.7800, 'per kg'),
-('price_7_s', 'prod_7', 'store_supervalu', 5.79, 11.5800, 'per kg');
+('price_7_t', 'prod_7', 'store_tesco', 5.49, 10.9800, 'per kg'),
+('price_7_d', 'prod_7', 'store_dunnes', 4.79, 9.5800, 'per kg'),
+('price_7_l', 'prod_7', 'store_lidl', 5.19, 10.3800, 'per kg'),
+('price_7_a', 'prod_7', 'store_aldi', 5.09, 10.1800, 'per kg'),
+('price_7_s', 'prod_7', 'store_supervalu', 5.69, 11.3800, 'per kg');
 
--- Rashers Back Bacon 200g (per kg)
+-- Rashers Back Bacon 200g (per kg) — Dunnes cheapest (meat), close prices
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_8_t', 'prod_8', 'store_tesco', 3.29, 16.4500, 'per kg'),
-('price_8_d', 'prod_8', 'store_dunnes', 2.99, 14.9500, 'per kg'),
-('price_8_l', 'prod_8', 'store_lidl', 2.69, 13.4500, 'per kg'),
-('price_8_a', 'prod_8', 'store_aldi', 2.59, 12.9500, 'per kg'),
+('price_8_t', 'prod_8', 'store_tesco', 3.09, 15.4500, 'per kg'),
+('price_8_d', 'prod_8', 'store_dunnes', 2.69, 13.4500, 'per kg'),
+('price_8_l', 'prod_8', 'store_lidl', 2.89, 14.4500, 'per kg'),
+('price_8_a', 'prod_8', 'store_aldi', 2.79, 13.9500, 'per kg'),
 ('price_8_s', 'prod_8', 'store_supervalu', 3.19, 15.9500, 'per kg');
 
--- Irish Pork Sausages 8 Pack (per kg)
+-- Irish Pork Sausages 8 Pack (per kg) — Dunnes cheapest (meat)
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_9_t', 'prod_9', 'store_tesco', 2.99, 6.5859, 'per kg'),
-('price_9_d', 'prod_9', 'store_dunnes', 2.79, 6.1454, 'per kg'),
-('price_9_l', 'prod_9', 'store_lidl', 2.49, 5.4846, 'per kg'),
-('price_9_a', 'prod_9', 'store_aldi', 2.39, 5.2643, 'per kg'),
-('price_9_s', 'prod_9', 'store_supervalu', 2.89, 6.3656, 'per kg');
+('price_9_t', 'prod_9', 'store_tesco', 2.89, 6.3656, 'per kg'),
+('price_9_d', 'prod_9', 'store_dunnes', 2.39, 5.2643, 'per kg'),
+('price_9_l', 'prod_9', 'store_lidl', 2.69, 5.9251, 'per kg'),
+('price_9_a', 'prod_9', 'store_aldi', 2.59, 5.7048, 'per kg'),
+('price_9_s', 'prod_9', 'store_supervalu', 2.99, 6.5859, 'per kg');
 
--- Fresh Salmon Fillets 280g (per kg)
+-- Fresh Salmon Fillets 280g (per kg) — Dunnes cheapest (meat), big gap
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_10_t', 'prod_10', 'store_tesco', 5.99, 21.3929, 'per kg'),
-('price_10_d', 'prod_10', 'store_dunnes', 5.79, 20.6786, 'per kg'),
-('price_10_l', 'prod_10', 'store_lidl', 5.49, 19.6071, 'per kg'),
-('price_10_a', 'prod_10', 'store_aldi', 5.29, 18.8929, 'per kg'),
-('price_10_s', 'prod_10', 'store_supervalu', 5.89, 21.0357, 'per kg');
+('price_10_t', 'prod_10', 'store_tesco', 5.89, 21.0357, 'per kg'),
+('price_10_d', 'prod_10', 'store_dunnes', 5.29, 18.8929, 'per kg'),
+('price_10_l', 'prod_10', 'store_lidl', 5.69, 20.3214, 'per kg'),
+('price_10_a', 'prod_10', 'store_aldi', 5.59, 19.9643, 'per kg'),
+('price_10_s', 'prod_10', 'store_supervalu', 5.99, 21.3929, 'per kg');
 
--- Bananas Bunch (per unit)
+-- Bananas Bunch (per unit) — Aldi cheapest (fruit & veg), very close prices
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_11_t', 'prod_11', 'store_tesco', 1.39, 0.2780, 'per unit'),
-('price_11_d', 'prod_11', 'store_dunnes', 1.29, 0.2580, 'per unit'),
-('price_11_l', 'prod_11', 'store_lidl', 0.99, 0.1980, 'per unit'),
-('price_11_a', 'prod_11', 'store_aldi', 0.95, 0.1900, 'per unit'),
-('price_11_s', 'prod_11', 'store_supervalu', 1.35, 0.2700, 'per unit');
+('price_11_t', 'prod_11', 'store_tesco', 1.15, 0.2300, 'per unit'),
+('price_11_d', 'prod_11', 'store_dunnes', 1.09, 0.2180, 'per unit'),
+('price_11_l', 'prod_11', 'store_lidl', 1.05, 0.2100, 'per unit'),
+('price_11_a', 'prod_11', 'store_aldi', 0.99, 0.1980, 'per unit'),
+('price_11_s', 'prod_11', 'store_supervalu', 1.19, 0.2380, 'per unit');
 
--- Baby Potatoes 1kg (per kg)
+-- Baby Potatoes 1kg (per kg) — Aldi cheapest (fruit & veg)
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_12_t', 'prod_12', 'store_tesco', 1.99, 1.9900, 'per kg'),
-('price_12_d', 'prod_12', 'store_dunnes', 1.79, 1.7900, 'per kg'),
-('price_12_l', 'prod_12', 'store_lidl', 1.49, 1.4900, 'per kg'),
-('price_12_a', 'prod_12', 'store_aldi', 1.45, 1.4500, 'per kg'),
+('price_12_t', 'prod_12', 'store_tesco', 1.79, 1.7900, 'per kg'),
+('price_12_d', 'prod_12', 'store_dunnes', 1.69, 1.6900, 'per kg'),
+('price_12_l', 'prod_12', 'store_lidl', 1.59, 1.5900, 'per kg'),
+('price_12_a', 'prod_12', 'store_aldi', 1.39, 1.3900, 'per kg'),
 ('price_12_s', 'prod_12', 'store_supervalu', 1.89, 1.8900, 'per kg');
 
--- Broccoli Head (per unit)
+-- Broccoli Head (per unit) — Aldi cheapest (fruit & veg), close prices
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_13_t', 'prod_13', 'store_tesco', 1.29, 1.2900, 'per unit'),
-('price_13_d', 'prod_13', 'store_dunnes', 1.19, 1.1900, 'per unit'),
+('price_13_t', 'prod_13', 'store_tesco', 1.15, 1.1500, 'per unit'),
+('price_13_d', 'prod_13', 'store_dunnes', 1.09, 1.0900, 'per unit'),
 ('price_13_l', 'prod_13', 'store_lidl', 0.99, 0.9900, 'per unit'),
 ('price_13_a', 'prod_13', 'store_aldi', 0.89, 0.8900, 'per unit'),
-('price_13_s', 'prod_13', 'store_supervalu', 1.25, 1.2500, 'per unit');
+('price_13_s', 'prod_13', 'store_supervalu', 1.19, 1.1900, 'per unit');
 
--- Mixed Salad Bag 150g (per kg)
+-- Mixed Salad Bag 150g (per kg) — Aldi cheapest (fruit & veg)
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_14_t', 'prod_14', 'store_tesco', 1.79, 11.9333, 'per kg'),
-('price_14_d', 'prod_14', 'store_dunnes', 1.69, 11.2667, 'per kg'),
-('price_14_l', 'prod_14', 'store_lidl', 1.49, 9.9333, 'per kg'),
-('price_14_a', 'prod_14', 'store_aldi', 1.39, 9.2667, 'per kg'),
-('price_14_s', 'prod_14', 'store_supervalu', 1.75, 11.6667, 'per kg');
+('price_14_t', 'prod_14', 'store_tesco', 1.69, 11.2667, 'per kg'),
+('price_14_d', 'prod_14', 'store_dunnes', 1.75, 11.6667, 'per kg'),
+('price_14_l', 'prod_14', 'store_lidl', 1.59, 10.6000, 'per kg'),
+('price_14_a', 'prod_14', 'store_aldi', 1.45, 9.6667, 'per kg'),
+('price_14_s', 'prod_14', 'store_supervalu', 1.79, 11.9333, 'per kg');
 
--- Avocados 2 Pack (per unit)
+-- Avocados 2 Pack (per unit) — Aldi cheapest (fruit & veg), big gap
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_15_t', 'prod_15', 'store_tesco', 2.49, 1.2450, 'per unit'),
-('price_15_d', 'prod_15', 'store_dunnes', 2.29, 1.1450, 'per unit'),
-('price_15_l', 'prod_15', 'store_lidl', 1.99, 0.9950, 'per unit'),
-('price_15_a', 'prod_15', 'store_aldi', 1.89, 0.9450, 'per unit'),
-('price_15_s', 'prod_15', 'store_supervalu', 2.39, 1.1950, 'per unit');
+('price_15_t', 'prod_15', 'store_tesco', 2.29, 1.1450, 'per unit'),
+('price_15_d', 'prod_15', 'store_dunnes', 2.39, 1.1950, 'per unit'),
+('price_15_l', 'prod_15', 'store_lidl', 2.09, 1.0450, 'per unit'),
+('price_15_a', 'prod_15', 'store_aldi', 1.79, 0.8950, 'per unit'),
+('price_15_s', 'prod_15', 'store_supervalu', 2.49, 1.2450, 'per unit');
 
--- Brennans White Sliced Pan 800g (per kg)
+-- Brennans White Sliced Pan 800g (per kg) — Lidl cheapest (bakery)
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_16_t', 'prod_16', 'store_tesco', 1.89, 2.3625, 'per kg'),
-('price_16_d', 'prod_16', 'store_dunnes', 1.79, 2.2375, 'per kg'),
-('price_16_l', 'prod_16', 'store_lidl', 1.59, 1.9875, 'per kg'),
-('price_16_a', 'prod_16', 'store_aldi', 1.55, 1.9375, 'per kg'),
-('price_16_s', 'prod_16', 'store_supervalu', 1.85, 2.3125, 'per kg');
+('price_16_t', 'prod_16', 'store_tesco', 1.79, 2.2375, 'per kg'),
+('price_16_d', 'prod_16', 'store_dunnes', 1.85, 2.3125, 'per kg'),
+('price_16_l', 'prod_16', 'store_lidl', 1.49, 1.8625, 'per kg'),
+('price_16_a', 'prod_16', 'store_aldi', 1.65, 2.0625, 'per kg'),
+('price_16_s', 'prod_16', 'store_supervalu', 1.89, 2.3625, 'per kg');
 
--- Sourdough Bread Loaf (per kg)
+-- Sourdough Bread Loaf (per kg) — Lidl cheapest (bakery), big gap
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_17_t', 'prod_17', 'store_tesco', 3.49, 6.9800, 'per kg'),
-('price_17_d', 'prod_17', 'store_dunnes', 3.29, 6.5800, 'per kg'),
-('price_17_l', 'prod_17', 'store_lidl', 2.79, 5.5800, 'per kg'),
-('price_17_a', 'prod_17', 'store_aldi', 2.69, 5.3800, 'per kg'),
-('price_17_s', 'prod_17', 'store_supervalu', 3.39, 6.7800, 'per kg');
+('price_17_t', 'prod_17', 'store_tesco', 3.29, 6.5800, 'per kg'),
+('price_17_d', 'prod_17', 'store_dunnes', 3.49, 6.9800, 'per kg'),
+('price_17_l', 'prod_17', 'store_lidl', 2.69, 5.3800, 'per kg'),
+('price_17_a', 'prod_17', 'store_aldi', 2.99, 5.9800, 'per kg'),
+('price_17_s', 'prod_17', 'store_supervalu', 3.59, 7.1800, 'per kg');
 
--- Croissants 4 Pack (per unit)
+-- Croissants 4 Pack (per unit) — Lidl cheapest (bakery)
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_18_t', 'prod_18', 'store_tesco', 2.29, 0.5725, 'per unit'),
-('price_18_d', 'prod_18', 'store_dunnes', 2.19, 0.5475, 'per unit'),
-('price_18_l', 'prod_18', 'store_lidl', 1.79, 0.4475, 'per unit'),
-('price_18_a', 'prod_18', 'store_aldi', 1.69, 0.4225, 'per unit'),
+('price_18_t', 'prod_18', 'store_tesco', 2.19, 0.5475, 'per unit'),
+('price_18_d', 'prod_18', 'store_dunnes', 2.29, 0.5725, 'per unit'),
+('price_18_l', 'prod_18', 'store_lidl', 1.69, 0.4225, 'per unit'),
+('price_18_a', 'prod_18', 'store_aldi', 1.89, 0.4725, 'per unit'),
 ('price_18_s', 'prod_18', 'store_supervalu', 2.25, 0.5625, 'per unit');
 
--- Tortilla Wraps 8 Pack (per unit)
+-- Tortilla Wraps 8 Pack (per unit) — Lidl cheapest (bakery), close prices
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_19_t', 'prod_19', 'store_tesco', 1.99, 0.2488, 'per unit'),
-('price_19_d', 'prod_19', 'store_dunnes', 1.89, 0.2363, 'per unit'),
-('price_19_l', 'prod_19', 'store_lidl', 1.49, 0.1863, 'per unit'),
-('price_19_a', 'prod_19', 'store_aldi', 1.39, 0.1738, 'per unit'),
-('price_19_s', 'prod_19', 'store_supervalu', 1.95, 0.2438, 'per unit');
+('price_19_t', 'prod_19', 'store_tesco', 1.79, 0.2238, 'per unit'),
+('price_19_d', 'prod_19', 'store_dunnes', 1.85, 0.2313, 'per unit'),
+('price_19_l', 'prod_19', 'store_lidl', 1.39, 0.1738, 'per unit'),
+('price_19_a', 'prod_19', 'store_aldi', 1.55, 0.1938, 'per unit'),
+('price_19_s', 'prod_19', 'store_supervalu', 1.89, 0.2363, 'per unit');
 
--- Barrys Tea Gold Blend 80s (per unit)
+-- Barrys Tea Gold Blend 80s (per unit) — Tesco cheapest (branded)
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_20_t', 'prod_20', 'store_tesco', 4.99, 0.0624, 'per unit'),
-('price_20_d', 'prod_20', 'store_dunnes', 4.79, 0.0599, 'per unit'),
-('price_20_l', 'prod_20', 'store_lidl', 4.49, 0.0561, 'per unit'),
+('price_20_t', 'prod_20', 'store_tesco', 3.99, 0.0499, 'per unit'),
+('price_20_d', 'prod_20', 'store_dunnes', 4.49, 0.0561, 'per unit'),
+('price_20_l', 'prod_20', 'store_lidl', 4.59, 0.0574, 'per unit'),
 ('price_20_a', 'prod_20', 'store_aldi', 4.39, 0.0549, 'per unit'),
-('price_20_s', 'prod_20', 'store_supervalu', 4.89, 0.0611, 'per unit');
+('price_20_s', 'prod_20', 'store_supervalu', 4.69, 0.0586, 'per unit');
 
--- Lyons Original Tea 80s (per unit)
+-- Lyons Original Tea 80s (per unit) — Tesco cheapest (branded), close prices
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_21_t', 'prod_21', 'store_tesco', 4.79, 0.0599, 'per unit'),
-('price_21_d', 'prod_21', 'store_dunnes', 4.59, 0.0574, 'per unit'),
+('price_21_t', 'prod_21', 'store_tesco', 3.79, 0.0474, 'per unit'),
+('price_21_d', 'prod_21', 'store_dunnes', 4.19, 0.0524, 'per unit'),
 ('price_21_l', 'prod_21', 'store_lidl', 4.29, 0.0536, 'per unit'),
-('price_21_a', 'prod_21', 'store_aldi', 4.19, 0.0524, 'per unit'),
-('price_21_s', 'prod_21', 'store_supervalu', 4.69, 0.0586, 'per unit');
+('price_21_a', 'prod_21', 'store_aldi', 4.09, 0.0511, 'per unit'),
+('price_21_s', 'prod_21', 'store_supervalu', 4.39, 0.0549, 'per unit');
 
--- Coca-Cola 2L (per l)
+-- Coca-Cola 2L (per l) — Tesco cheapest (branded), very close prices
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_22_t', 'prod_22', 'store_tesco', 2.65, 1.3250, 'per l'),
-('price_22_d', 'prod_22', 'store_dunnes', 2.55, 1.2750, 'per l'),
-('price_22_l', 'prod_22', 'store_lidl', 2.35, 1.1750, 'per l'),
-('price_22_a', 'prod_22', 'store_aldi', 2.29, 1.1450, 'per l'),
-('price_22_s', 'prod_22', 'store_supervalu', 2.59, 1.2950, 'per l');
+('price_22_t', 'prod_22', 'store_tesco', 2.29, 1.1450, 'per l'),
+('price_22_d', 'prod_22', 'store_dunnes', 2.39, 1.1950, 'per l'),
+('price_22_l', 'prod_22', 'store_lidl', 2.45, 1.2250, 'per l'),
+('price_22_a', 'prod_22', 'store_aldi', 2.35, 1.1750, 'per l'),
+('price_22_s', 'prod_22', 'store_supervalu', 2.49, 1.2450, 'per l');
 
--- Tropicana Orange Juice 1L (per l)
+-- Tropicana Orange Juice 1L (per l) — Tesco cheapest (branded)
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_23_t', 'prod_23', 'store_tesco', 3.49, 3.4900, 'per l'),
+('price_23_t', 'prod_23', 'store_tesco', 2.89, 2.8900, 'per l'),
 ('price_23_d', 'prod_23', 'store_dunnes', 3.29, 3.2900, 'per l'),
-('price_23_l', 'prod_23', 'store_lidl', 2.99, 2.9900, 'per l'),
-('price_23_a', 'prod_23', 'store_aldi', 2.89, 2.8900, 'per l'),
-('price_23_s', 'prod_23', 'store_supervalu', 3.39, 3.3900, 'per l');
+('price_23_l', 'prod_23', 'store_lidl', 3.39, 3.3900, 'per l'),
+('price_23_a', 'prod_23', 'store_aldi', 3.19, 3.1900, 'per l'),
+('price_23_s', 'prod_23', 'store_supervalu', 3.49, 3.4900, 'per l');
 
--- Ballygowan Still Water 2L (per l)
+-- Ballygowan Still Water 2L (per l) — Lidl cheapest, very close prices
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_24_t', 'prod_24', 'store_tesco', 1.29, 0.6450, 'per l'),
-('price_24_d', 'prod_24', 'store_dunnes', 1.19, 0.5950, 'per l'),
-('price_24_l', 'prod_24', 'store_lidl', 0.99, 0.4950, 'per l'),
-('price_24_a', 'prod_24', 'store_aldi', 0.95, 0.4750, 'per l'),
-('price_24_s', 'prod_24', 'store_supervalu', 1.25, 0.6250, 'per l');
+('price_24_t', 'prod_24', 'store_tesco', 1.09, 0.5450, 'per l'),
+('price_24_d', 'prod_24', 'store_dunnes', 1.15, 0.5750, 'per l'),
+('price_24_l', 'prod_24', 'store_lidl', 0.95, 0.4750, 'per l'),
+('price_24_a', 'prod_24', 'store_aldi', 0.99, 0.4950, 'per l'),
+('price_24_s', 'prod_24', 'store_supervalu', 1.19, 0.5950, 'per l');
 
--- Fish Fingers 10 Pack (per kg)
+-- Fish Fingers 10 Pack (per kg) — Lidl cheapest (frozen)
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_25_t', 'prod_25', 'store_tesco', 2.99, 11.9600, 'per kg'),
+('price_25_t', 'prod_25', 'store_tesco', 2.89, 11.5600, 'per kg'),
 ('price_25_d', 'prod_25', 'store_dunnes', 2.79, 11.1600, 'per kg'),
-('price_25_l', 'prod_25', 'store_lidl', 2.29, 9.1600, 'per kg'),
-('price_25_a', 'prod_25', 'store_aldi', 2.19, 8.7600, 'per kg'),
-('price_25_s', 'prod_25', 'store_supervalu', 2.89, 11.5600, 'per kg');
+('price_25_l', 'prod_25', 'store_lidl', 2.19, 8.7600, 'per kg'),
+('price_25_a', 'prod_25', 'store_aldi', 2.49, 9.9600, 'per kg'),
+('price_25_s', 'prod_25', 'store_supervalu', 2.99, 11.9600, 'per kg');
 
--- Frozen Pizza Margherita (per kg)
+-- Frozen Pizza Margherita (per kg) — Lidl cheapest (frozen), big gap
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_26_t', 'prod_26', 'store_tesco', 3.49, 9.9714, 'per kg'),
-('price_26_d', 'prod_26', 'store_dunnes', 3.29, 9.4000, 'per kg'),
+('price_26_t', 'prod_26', 'store_tesco', 3.29, 9.4000, 'per kg'),
+('price_26_d', 'prod_26', 'store_dunnes', 3.49, 9.9714, 'per kg'),
 ('price_26_l', 'prod_26', 'store_lidl', 2.49, 7.1143, 'per kg'),
-('price_26_a', 'prod_26', 'store_aldi', 2.39, 6.8286, 'per kg'),
-('price_26_s', 'prod_26', 'store_supervalu', 3.39, 9.6857, 'per kg');
+('price_26_a', 'prod_26', 'store_aldi', 2.89, 8.2571, 'per kg'),
+('price_26_s', 'prod_26', 'store_supervalu', 3.59, 10.2571, 'per kg');
 
--- Frozen Garden Peas 900g (per kg)
+-- Frozen Garden Peas 900g (per kg) — Lidl cheapest (frozen), close prices
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_27_t', 'prod_27', 'store_tesco', 1.99, 2.2111, 'per kg'),
+('price_27_t', 'prod_27', 'store_tesco', 1.79, 1.9889, 'per kg'),
 ('price_27_d', 'prod_27', 'store_dunnes', 1.89, 2.1000, 'per kg'),
-('price_27_l', 'prod_27', 'store_lidl', 1.49, 1.6556, 'per kg'),
-('price_27_a', 'prod_27', 'store_aldi', 1.39, 1.5444, 'per kg'),
+('price_27_l', 'prod_27', 'store_lidl', 1.35, 1.5000, 'per kg'),
+('price_27_a', 'prod_27', 'store_aldi', 1.49, 1.6556, 'per kg'),
 ('price_27_s', 'prod_27', 'store_supervalu', 1.95, 2.1667, 'per kg');
 
--- Tayto Cheese & Onion 6 Pack (per kg)
+-- Tayto Cheese & Onion 6 Pack (per kg) — Dunnes cheapest
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_28_t', 'prod_28', 'store_tesco', 2.99, 19.9333, 'per kg'),
-('price_28_d', 'prod_28', 'store_dunnes', 2.79, 18.6000, 'per kg'),
-('price_28_l', 'prod_28', 'store_lidl', 2.49, 16.6000, 'per kg'),
-('price_28_a', 'prod_28', 'store_aldi', 2.39, 15.9333, 'per kg'),
+('price_28_t', 'prod_28', 'store_tesco', 2.79, 18.6000, 'per kg'),
+('price_28_d', 'prod_28', 'store_dunnes', 2.49, 16.6000, 'per kg'),
+('price_28_l', 'prod_28', 'store_lidl', 2.69, 17.9333, 'per kg'),
+('price_28_a', 'prod_28', 'store_aldi', 2.59, 17.2667, 'per kg'),
 ('price_28_s', 'prod_28', 'store_supervalu', 2.89, 19.2667, 'per kg');
 
--- Cadbury Dairy Milk 200g (per kg)
+-- Cadbury Dairy Milk 200g (per kg) — Tesco cheapest (branded)
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_29_t', 'prod_29', 'store_tesco', 3.99, 19.9500, 'per kg'),
-('price_29_d', 'prod_29', 'store_dunnes', 3.79, 18.9500, 'per kg'),
-('price_29_l', 'prod_29', 'store_lidl', 3.49, 17.4500, 'per kg'),
-('price_29_a', 'prod_29', 'store_aldi', 3.39, 16.9500, 'per kg'),
+('price_29_t', 'prod_29', 'store_tesco', 3.29, 16.4500, 'per kg'),
+('price_29_d', 'prod_29', 'store_dunnes', 3.69, 18.4500, 'per kg'),
+('price_29_l', 'prod_29', 'store_lidl', 3.79, 18.9500, 'per kg'),
+('price_29_a', 'prod_29', 'store_aldi', 3.59, 17.9500, 'per kg'),
 ('price_29_s', 'prod_29', 'store_supervalu', 3.89, 19.4500, 'per kg');
 
--- Digestive Biscuits 400g (per kg)
+-- Digestive Biscuits 400g (per kg) — Aldi cheapest, close prices
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_30_t', 'prod_30', 'store_tesco', 1.99, 4.9750, 'per kg'),
-('price_30_d', 'prod_30', 'store_dunnes', 1.89, 4.7250, 'per kg'),
-('price_30_l', 'prod_30', 'store_lidl', 1.49, 3.7250, 'per kg'),
-('price_30_a', 'prod_30', 'store_aldi', 1.39, 3.4750, 'per kg'),
-('price_30_s', 'prod_30', 'store_supervalu', 1.95, 4.8750, 'per kg');
+('price_30_t', 'prod_30', 'store_tesco', 1.69, 4.2250, 'per kg'),
+('price_30_d', 'prod_30', 'store_dunnes', 1.65, 4.1250, 'per kg'),
+('price_30_l', 'prod_30', 'store_lidl', 1.59, 3.9750, 'per kg'),
+('price_30_a', 'prod_30', 'store_aldi', 1.49, 3.7250, 'per kg'),
+('price_30_s', 'prod_30', 'store_supervalu', 1.75, 4.3750, 'per kg');
 
--- Fairy Washing Up Liquid 900ml (per l)
+-- Fairy Washing Up Liquid 900ml (per l) — Tesco cheapest (branded)
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_31_t', 'prod_31', 'store_tesco', 3.49, 3.8778, 'per l'),
-('price_31_d', 'prod_31', 'store_dunnes', 3.29, 3.6556, 'per l'),
-('price_31_l', 'prod_31', 'store_lidl', 2.99, 3.3222, 'per l'),
-('price_31_a', 'prod_31', 'store_aldi', 2.89, 3.2111, 'per l'),
-('price_31_s', 'prod_31', 'store_supervalu', 3.39, 3.7667, 'per l');
+('price_31_t', 'prod_31', 'store_tesco', 2.79, 3.1000, 'per l'),
+('price_31_d', 'prod_31', 'store_dunnes', 3.19, 3.5444, 'per l'),
+('price_31_l', 'prod_31', 'store_lidl', 3.29, 3.6556, 'per l'),
+('price_31_a', 'prod_31', 'store_aldi', 3.09, 3.4333, 'per l'),
+('price_31_s', 'prod_31', 'store_supervalu', 3.15, 3.5000, 'per l');
 
--- Toilet Roll 9 Pack (per unit)
+-- Toilet Roll 9 Pack (per unit) — SuperValu cheapest (household)
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_32_t', 'prod_32', 'store_tesco', 4.99, 0.5544, 'per unit'),
-('price_32_d', 'prod_32', 'store_dunnes', 4.79, 0.5322, 'per unit'),
-('price_32_l', 'prod_32', 'store_lidl', 3.99, 0.4433, 'per unit'),
-('price_32_a', 'prod_32', 'store_aldi', 3.89, 0.4322, 'per unit'),
-('price_32_s', 'prod_32', 'store_supervalu', 4.89, 0.5433, 'per unit');
+('price_32_t', 'prod_32', 'store_tesco', 4.79, 0.5322, 'per unit'),
+('price_32_d', 'prod_32', 'store_dunnes', 4.69, 0.5211, 'per unit'),
+('price_32_l', 'prod_32', 'store_lidl', 4.29, 0.4767, 'per unit'),
+('price_32_a', 'prod_32', 'store_aldi', 4.19, 0.4656, 'per unit'),
+('price_32_s', 'prod_32', 'store_supervalu', 3.99, 0.4433, 'per unit');
 
--- Bin Bags 20 Pack (per unit)
+-- Bin Bags 20 Pack (per unit) — SuperValu cheapest (household), close prices
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_33_t', 'prod_33', 'store_tesco', 2.99, 0.1495, 'per unit'),
-('price_33_d', 'prod_33', 'store_dunnes', 2.79, 0.1395, 'per unit'),
-('price_33_l', 'prod_33', 'store_lidl', 2.29, 0.1145, 'per unit'),
-('price_33_a', 'prod_33', 'store_aldi', 2.19, 0.1095, 'per unit'),
-('price_33_s', 'prod_33', 'store_supervalu', 2.89, 0.1445, 'per unit');
+('price_33_t', 'prod_33', 'store_tesco', 2.69, 0.1345, 'per unit'),
+('price_33_d', 'prod_33', 'store_dunnes', 2.59, 0.1295, 'per unit'),
+('price_33_l', 'prod_33', 'store_lidl', 2.49, 0.1245, 'per unit'),
+('price_33_a', 'prod_33', 'store_aldi', 2.45, 0.1225, 'per unit'),
+('price_33_s', 'prod_33', 'store_supervalu', 2.29, 0.1145, 'per unit');
 
--- Shampoo 400ml (per l)
+-- Shampoo 400ml (per l) — SuperValu cheapest (personal care)
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_34_t', 'prod_34', 'store_tesco', 3.99, 9.9750, 'per l'),
-('price_34_d', 'prod_34', 'store_dunnes', 3.79, 9.4750, 'per l'),
-('price_34_l', 'prod_34', 'store_lidl', 2.99, 7.4750, 'per l'),
-('price_34_a', 'prod_34', 'store_aldi', 2.89, 7.2250, 'per l'),
-('price_34_s', 'prod_34', 'store_supervalu', 3.89, 9.7250, 'per l');
+('price_34_t', 'prod_34', 'store_tesco', 3.69, 9.2250, 'per l'),
+('price_34_d', 'prod_34', 'store_dunnes', 3.59, 8.9750, 'per l'),
+('price_34_l', 'prod_34', 'store_lidl', 3.29, 8.2250, 'per l'),
+('price_34_a', 'prod_34', 'store_aldi', 3.19, 7.9750, 'per l'),
+('price_34_s', 'prod_34', 'store_supervalu', 2.99, 7.4750, 'per l');
 
--- Toothpaste 100ml (per l)
+-- Toothpaste 100ml (per l) — SuperValu cheapest (personal care), close prices
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_35_t', 'prod_35', 'store_tesco', 2.49, 24.9000, 'per l'),
-('price_35_d', 'prod_35', 'store_dunnes', 2.39, 23.9000, 'per l'),
-('price_35_l', 'prod_35', 'store_lidl', 1.99, 19.9000, 'per l'),
-('price_35_a', 'prod_35', 'store_aldi', 1.89, 18.9000, 'per l'),
-('price_35_s', 'prod_35', 'store_supervalu', 2.45, 24.5000, 'per l');
+('price_35_t', 'prod_35', 'store_tesco', 2.39, 23.9000, 'per l'),
+('price_35_d', 'prod_35', 'store_dunnes', 2.29, 22.9000, 'per l'),
+('price_35_l', 'prod_35', 'store_lidl', 2.19, 21.9000, 'per l'),
+('price_35_a', 'prod_35', 'store_aldi', 2.15, 21.5000, 'per l'),
+('price_35_s', 'prod_35', 'store_supervalu', 1.99, 19.9000, 'per l');
 
--- Baby Wipes 64 Pack (per unit)
+-- Baby Wipes 64 Pack (per unit) — SuperValu cheapest (baby)
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
-('price_36_t', 'prod_36', 'store_tesco', 2.49, 0.0389, 'per unit'),
-('price_36_d', 'prod_36', 'store_dunnes', 2.39, 0.0373, 'per unit'),
-('price_36_l', 'prod_36', 'store_lidl', 1.89, 0.0295, 'per unit'),
-('price_36_a', 'prod_36', 'store_aldi', 1.79, 0.0280, 'per unit'),
-('price_36_s', 'prod_36', 'store_supervalu', 2.45, 0.0383, 'per unit');
+('price_36_t', 'prod_36', 'store_tesco', 2.29, 0.0358, 'per unit'),
+('price_36_d', 'prod_36', 'store_dunnes', 2.19, 0.0342, 'per unit'),
+('price_36_l', 'prod_36', 'store_lidl', 2.09, 0.0327, 'per unit'),
+('price_36_a', 'prod_36', 'store_aldi', 1.99, 0.0311, 'per unit'),
+('price_36_s', 'prod_36', 'store_supervalu', 1.79, 0.0280, 'per unit');
 
--- Nappies Size 4 (40 Pack) (per unit)
+-- Nappies Size 4 (40 Pack) (per unit) — SuperValu cheapest (baby), big gap
 INSERT INTO "Price" ("id", "productId", "storeId", "price", "unitPrice", "unitPriceUnit") VALUES
 ('price_37_t', 'prod_37', 'store_tesco', 9.99, 0.2498, 'per unit'),
 ('price_37_d', 'prod_37', 'store_dunnes', 9.49, 0.2373, 'per unit'),
-('price_37_l', 'prod_37', 'store_lidl', 7.99, 0.1998, 'per unit'),
-('price_37_a', 'prod_37', 'store_aldi', 7.69, 0.1923, 'per unit'),
-('price_37_s', 'prod_37', 'store_supervalu', 9.79, 0.2448, 'per unit');
+('price_37_l', 'prod_37', 'store_lidl', 8.99, 0.2248, 'per unit'),
+('price_37_a', 'prod_37', 'store_aldi', 8.79, 0.2198, 'per unit'),
+('price_37_s', 'prod_37', 'store_supervalu', 7.99, 0.1998, 'per unit');
 
--- Add a few "on sale" items to make the app more interesting
-UPDATE "Price" SET "isOnSale" = true, "originalPrice" = 2.89 WHERE "id" = 'price_1_l';
-UPDATE "Price" SET "isOnSale" = true, "originalPrice" = 3.99 WHERE "id" = 'price_2_l';
-UPDATE "Price" SET "isOnSale" = true, "originalPrice" = 6.49 WHERE "id" = 'price_6_a';
-UPDATE "Price" SET "isOnSale" = true, "originalPrice" = 1.49 WHERE "id" = 'price_11_l';
-UPDATE "Price" SET "isOnSale" = true, "originalPrice" = 2.19 WHERE "id" = 'price_18_a';
-UPDATE "Price" SET "isOnSale" = true, "originalPrice" = 5.49 WHERE "id" = 'price_20_l';
-UPDATE "Price" SET "isOnSale" = true, "originalPrice" = 3.29 WHERE "id" = 'price_22_a';
-UPDATE "Price" SET "isOnSale" = true, "originalPrice" = 4.99 WHERE "id" = 'price_29_l';
-UPDATE "Price" SET "isOnSale" = true, "originalPrice" = 2.99 WHERE "id" = 'price_26_l';
-UPDATE "Price" SET "isOnSale" = true, "originalPrice" = 10.99 WHERE "id" = 'price_37_l';
+-- Mark ~18 items as on sale at various stores
+-- Tesco sales (branded deals)
+UPDATE "Price" SET "isOnSale" = true, "originalPrice" = 4.49 WHERE "id" = 'price_20_t';  -- Barry's Tea
+UPDATE "Price" SET "isOnSale" = true, "originalPrice" = 4.29 WHERE "id" = 'price_21_t';  -- Lyons Tea
+UPDATE "Price" SET "isOnSale" = true, "originalPrice" = 3.69 WHERE "id" = 'price_29_t';  -- Cadbury
+
+-- Dunnes sales (meat deals)
+UPDATE "Price" SET "isOnSale" = true, "originalPrice" = 5.99 WHERE "id" = 'price_6_d';   -- Chicken
+UPDATE "Price" SET "isOnSale" = true, "originalPrice" = 5.49 WHERE "id" = 'price_7_d';   -- Mince Beef
+UPDATE "Price" SET "isOnSale" = true, "originalPrice" = 2.99 WHERE "id" = 'price_28_d';  -- Tayto
+
+-- Lidl sales (bakery & frozen)
+UPDATE "Price" SET "isOnSale" = true, "originalPrice" = 1.79 WHERE "id" = 'price_16_l';  -- Brennans Bread
+UPDATE "Price" SET "isOnSale" = true, "originalPrice" = 2.99 WHERE "id" = 'price_17_l';  -- Sourdough
+UPDATE "Price" SET "isOnSale" = true, "originalPrice" = 2.99 WHERE "id" = 'price_26_l';  -- Frozen Pizza
+UPDATE "Price" SET "isOnSale" = true, "originalPrice" = 1.69 WHERE "id" = 'price_27_l';  -- Frozen Peas
+
+-- Aldi sales (dairy & fruit)
+UPDATE "Price" SET "isOnSale" = true, "originalPrice" = 2.19 WHERE "id" = 'price_1_a';   -- Milk
+UPDATE "Price" SET "isOnSale" = true, "originalPrice" = 3.49 WHERE "id" = 'price_3_a';   -- Eggs
+UPDATE "Price" SET "isOnSale" = true, "originalPrice" = 2.19 WHERE "id" = 'price_15_a';  -- Avocados
+UPDATE "Price" SET "isOnSale" = true, "originalPrice" = 1.19 WHERE "id" = 'price_11_a';  -- Bananas
+
+-- SuperValu sales (baby & personal care)
+UPDATE "Price" SET "isOnSale" = true, "originalPrice" = 9.49 WHERE "id" = 'price_37_s';  -- Nappies
+UPDATE "Price" SET "isOnSale" = true, "originalPrice" = 2.29 WHERE "id" = 'price_36_s';  -- Baby Wipes
+UPDATE "Price" SET "isOnSale" = true, "originalPrice" = 3.49 WHERE "id" = 'price_34_s';  -- Shampoo
+UPDATE "Price" SET "isOnSale" = true, "originalPrice" = 4.49 WHERE "id" = 'price_32_s';  -- Toilet Roll
 
 -- Done! Your database now has:
 -- 5 stores (Tesco, Dunnes, Lidl, Aldi, SuperValu)
@@ -624,4 +644,4 @@ UPDATE "Price" SET "isOnSale" = true, "originalPrice" = 10.99 WHERE "id" = 'pric
 -- 10 product categories
 -- 37 Irish grocery products
 -- 185 price records (37 products x 5 stores)
--- 10 items on sale
+-- 18 items on sale across all 5 stores

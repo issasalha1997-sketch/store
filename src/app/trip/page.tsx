@@ -123,19 +123,72 @@ export default function TripPage() {
   const netBenefit = savings - fuelCost - timeCost;
   const verdict = netBenefit > WORTH_IT_THRESHOLD ? "WORTH_IT" : netBenefit > 0 ? "MARGINAL" : "NOT_WORTH_IT";
 
+  // Find the nearest store location for each store in the optimization
+  const getStoreLocations = () => {
+    if (!locations?.data || !optimization) return [];
+    const locationData = locations.data as Array<{
+      store: { slug: string; name: string };
+      latitude: number;
+      longitude: number;
+      name: string;
+      address: string;
+      distance: number;
+    }>;
+    return optimization.multiStoreBest.stores.map((sg) => {
+      const nearest = locationData
+        .filter((l) => l.store.slug === sg.store.slug)
+        .sort((a, b) => a.distance - b.distance)[0];
+      return {
+        storeGroup: sg,
+        location: nearest || null,
+      };
+    });
+  };
+
+  const storeLocations = getStoreLocations();
+
   // Build Google Maps directions URL
   const buildDirectionsUrl = () => {
     if (!userLocation || !optimization) return "#";
-    const storeNames = optimization.multiStoreBest.stores.map(
-      (s) => `${s.store.name}+Dublin`
+    const waypoints = storeLocations
+      .map((sl) =>
+        sl.location
+          ? `${sl.location.latitude},${sl.location.longitude}`
+          : `${sl.storeGroup.store.name}+Dublin`
+      )
+      .join("/");
+    const modeParam =
+      transportMode === "driving" ? "0" :
+      transportMode === "transit" ? "3" :
+      transportMode === "bicycling" ? "1" : "2";
+    return `https://www.google.com/maps/dir/${userLocation.lat},${userLocation.lng}/${waypoints}/${userLocation.lat},${userLocation.lng}/@${userLocation.lat},${userLocation.lng},13z/data=!4m2!4m1!3e${modeParam}`;
+  };
+
+  // Build embed URL for the iframe map
+  const buildEmbedUrl = () => {
+    if (!userLocation || !optimization) return "";
+    const origin = `${userLocation.lat},${userLocation.lng}`;
+    const storePoints = storeLocations.map((sl) =>
+      sl.location
+        ? `${sl.location.latitude},${sl.location.longitude}`
+        : `${sl.storeGroup.store.name}+Dublin+Ireland`
     );
-    const waypoints = storeNames.join("/");
-    const travelMode =
+    // Google Maps embed with directions mode
+    const destination = storePoints[storePoints.length - 1] || origin;
+    const waypointStr = storePoints.length > 1 ? storePoints.slice(0, -1).join("|") : "";
+    const mode =
       transportMode === "driving" ? "driving" :
       transportMode === "transit" ? "transit" :
       transportMode === "bicycling" ? "bicycling" :
       "walking";
-    return `https://www.google.com/maps/dir/${userLocation.lat},${userLocation.lng}/${waypoints}/${userLocation.lat},${userLocation.lng}/@${userLocation.lat},${userLocation.lng},13z/data=!4m2!4m1!3e${travelMode === "driving" ? "0" : travelMode === "transit" ? "3" : travelMode === "bicycling" ? "1" : "2"}`;
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    if (apiKey) {
+      return `https://www.google.com/maps/embed/v1/directions?key=${apiKey}&origin=${origin}&destination=${origin}&waypoints=${waypointStr}|${destination}&mode=${mode}`;
+    }
+    // Fallback: use regular maps embed (no API key needed)
+    const allPoints = [origin, ...storePoints, origin];
+    const dirUrl = `https://www.google.com/maps/dir/${allPoints.join("/")}`;
+    return `https://maps.google.com/maps?q=${storePoints[0]}&z=13&output=embed`;
   };
 
   const transportModes: { mode: TransportMode; icon: typeof Car; label: string }[] = [
@@ -171,30 +224,39 @@ export default function TripPage() {
             ))}
           </div>
 
-          {/* Map placeholder */}
+          {/* Map */}
           <Card>
-            <CardContent className="p-0">
-              <div className="flex h-80 items-center justify-center rounded-xl bg-muted">
-                <div className="text-center">
-                  <MapPin className="mx-auto h-12 w-12 text-muted-foreground/30" />
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Map view requires Google Maps API key
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to .env
-                  </p>
-                  <a
-                    href={buildDirectionsUrl()}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-3 inline-block"
-                  >
-                    <Button size="sm" variant="outline">
-                      <ExternalLink className="mr-1.5 h-4 w-4" />
-                      Open in Google Maps
-                    </Button>
-                  </a>
+            <CardContent className="p-0 overflow-hidden rounded-xl">
+              {optimization && userLocation ? (
+                <iframe
+                  className="w-full h-80 border-0"
+                  loading="lazy"
+                  allowFullScreen
+                  referrerPolicy="no-referrer-when-downgrade"
+                  src={buildEmbedUrl()}
+                  title="Shopping trip route"
+                />
+              ) : (
+                <div className="flex h-80 items-center justify-center bg-muted">
+                  <div className="text-center">
+                    <MapPin className="mx-auto h-12 w-12 text-muted-foreground/30" />
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Loading map...
+                    </p>
+                  </div>
                 </div>
+              )}
+              <div className="p-3 border-t flex justify-end">
+                <a
+                  href={buildDirectionsUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Button size="sm" variant="outline">
+                    <ExternalLink className="mr-1.5 h-4 w-4" />
+                    Open in Google Maps
+                  </Button>
+                </a>
               </div>
             </CardContent>
           </Card>
@@ -220,8 +282,8 @@ export default function TripPage() {
                   </div>
                 </div>
 
-                {optimization?.multiStoreBest.stores.map((storeGroup, index) => (
-                  <div key={storeGroup.store.id}>
+                {storeLocations.map((sl, index) => (
+                  <div key={sl.storeGroup.store.id}>
                     <div className="ml-4 border-l-2 border-dashed border-muted-foreground/20 h-6" />
                     <div className="flex items-start gap-3">
                       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-600 text-sm font-bold">
@@ -230,19 +292,28 @@ export default function TripPage() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <StoreLogo
-                            slug={storeGroup.store.slug}
-                            name={storeGroup.store.name}
+                            slug={sl.storeGroup.store.slug}
+                            name={sl.storeGroup.store.name}
                             size="sm"
                           />
-                          <p className="font-medium">{storeGroup.store.name}</p>
-                          <span className="text-sm text-green-600 font-semibold">
-                            {formatPrice(storeGroup.subtotal)}
+                          <div>
+                            <p className="font-medium">{sl.storeGroup.store.name}</p>
+                            {sl.location && (
+                              <p className="text-xs text-muted-foreground">
+                                {sl.location.name} — {sl.location.address}
+                                {sl.location.distance > 0 && ` (${sl.location.distance} km)`}
+                              </p>
+                            )}
+                          </div>
+                          <span className="ml-auto text-sm text-green-600 font-semibold">
+                            {formatPrice(sl.storeGroup.subtotal)}
                           </span>
                         </div>
-                        <ul className="mt-1 text-xs text-muted-foreground space-y-0.5">
-                          {storeGroup.items.map((item) => (
-                            <li key={item.productId}>
-                              {item.productName} x{item.quantity} — {formatPrice(item.price)}
+                        <ul className="mt-1.5 text-xs text-muted-foreground space-y-0.5 ml-1">
+                          {sl.storeGroup.items.map((item) => (
+                            <li key={item.productId} className="flex justify-between">
+                              <span>{item.productName} x{item.quantity}</span>
+                              <span className="font-medium">{formatPrice(item.price)}</span>
                             </li>
                           ))}
                         </ul>
