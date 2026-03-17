@@ -1,0 +1,220 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearchPostgres"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── STORES ──────────────────────────────────────────
+
+model Store {
+  id         String   @id @default(cuid())
+  name       String   @unique
+  slug       String   @unique
+  logoUrl    String?
+  websiteUrl String?
+  color      String?
+  createdAt  DateTime @default(now())
+
+  locations StoreLocation[]
+  prices    Price[]
+}
+
+model StoreLocation {
+  id           String   @id @default(cuid())
+  storeId      String
+  store        Store    @relation(fields: [storeId], references: [id])
+  name         String
+  address      String
+  latitude     Float
+  longitude    Float
+  openingHours Json?
+  phone        String?
+  createdAt    DateTime @default(now())
+
+  @@index([storeId])
+  @@index([latitude, longitude])
+}
+
+// ─── PRODUCTS ────────────────────────────────────────
+
+model Category {
+  id       String  @id @default(cuid())
+  name     String  @unique
+  slug     String  @unique
+  iconUrl  String?
+  parentId String?
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryTree")
+
+  products Product[]
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  brand       String?
+  imageUrl    String?
+  barcode     String?  @unique
+  weight      Float?
+  weightUnit  String?
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id])
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  prices      Price[]
+  reviews     Review[]
+  basketItems BasketItem[]
+
+  @@index([name])
+  @@index([categoryId])
+  @@index([brand])
+}
+
+// ─── PRICES ──────────────────────────────────────────
+
+model Price {
+  id            String   @id @default(cuid())
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id])
+  storeId       String
+  store         Store    @relation(fields: [storeId], references: [id])
+  price         Decimal  @db.Decimal(10, 2)
+  originalPrice Decimal? @db.Decimal(10, 2)
+  isOnSale      Boolean  @default(false)
+  unitPrice     Decimal? @db.Decimal(10, 4)
+  unitPriceUnit String?
+  currency      String   @default("EUR")
+  sourceUrl     String?
+  scrapedAt     DateTime @default(now())
+  isLatest      Boolean  @default(true)
+
+  @@index([productId, storeId])
+  @@index([scrapedAt])
+  @@index([isLatest])
+}
+
+// ─── USERS ───────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String?
+  homeLatitude  Float?
+  homeLongitude Float?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts Account[]
+  sessions Session[]
+  baskets  Basket[]
+  reviews  Review[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── BASKETS ─────────────────────────────────────────
+
+model Basket {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String   @default("My Basket")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items BasketItem[]
+
+  @@index([userId])
+}
+
+model BasketItem {
+  id               String   @id @default(cuid())
+  basketId         String
+  basket           Basket   @relation(fields: [basketId], references: [id], onDelete: Cascade)
+  productId        String
+  product          Product  @relation(fields: [productId], references: [id])
+  quantity         Int      @default(1)
+  preferredStoreId String?
+  createdAt        DateTime @default(now())
+
+  @@unique([basketId, productId])
+  @@index([basketId])
+}
+
+// ─── REVIEWS ─────────────────────────────────────────
+
+model Review {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating    Int
+  title     String?
+  body      String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([productId, userId])
+  @@index([productId])
+}
+
+// ─── SCRAPER METADATA ────────────────────────────────
+
+model ScrapeRun {
+  id            String    @id @default(cuid())
+  storeSlug     String
+  status        String
+  productsFound Int       @default(0)
+  pricesUpdated Int       @default(0)
+  errors        Int       @default(0)
+  errorLog      String?   @db.Text
+  startedAt     DateTime  @default(now())
+  completedAt   DateTime?
+  duration      Int?
+
+  @@index([storeSlug, startedAt])
+}
