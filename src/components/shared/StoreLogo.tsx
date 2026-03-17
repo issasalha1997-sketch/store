@@ -20,7 +20,7 @@ export function StoreLogo({ slug, name, size = "md" }: StoreLogoProps) {
       style={{ backgroundColor: color }}
       title={name}
     >
-      {name.charAt(0)}
+      {name?.[0] ?? "?"}
     </div>
   );
 }

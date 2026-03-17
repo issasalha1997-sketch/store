@@ -71,7 +71,7 @@ export default function HomePage() {
                   className="flex h-10 w-10 items-center justify-center rounded-lg text-white font-bold"
                   style={{ backgroundColor: store.color }}
                 >
-                  {store.name.charAt(0)}
+                  {store.name?.[0] ?? "?"}
                 </div>
                 <span className="hidden sm:inline">{store.name}</span>
               </div>
