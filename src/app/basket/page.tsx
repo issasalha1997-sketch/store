@@ -19,8 +19,10 @@ import {
   ArrowRight,
   Check,
   RotateCcw,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface ItemPrice {
   storeId: string;
@@ -115,7 +117,6 @@ export default function BasketPage() {
     enabled: items.length > 0,
   });
 
-  // Collect all unique stores from the price data for column headers
   const allStores = useMemo(() => {
     if (!optimization?.itemPrices) return [];
     const storeMap = new Map<
@@ -137,7 +138,6 @@ export default function BasketPage() {
     return Array.from(storeMap.values());
   }, [optimization?.itemPrices]);
 
-  // Determine the algorithm's cheapest store per item
   const algorithmChoices = useMemo(() => {
     if (!optimization?.itemPrices) return new Map<string, string>();
     const map = new Map<string, string>();
@@ -151,7 +151,6 @@ export default function BasketPage() {
     return map;
   }, [optimization?.itemPrices]);
 
-  // Build effective selections: user override takes priority, then algorithm choice
   const effectiveSelections = useMemo(() => {
     const map = new Map<string, string>();
     for (const [productId, algoStoreId] of algorithmChoices) {
@@ -160,7 +159,6 @@ export default function BasketPage() {
     return map;
   }, [algorithmChoices, preferredStores]);
 
-  // Calculate custom total from effective selections
   const customTotal = useMemo(() => {
     if (!optimization?.itemPrices) return 0;
     let total = 0;
@@ -176,7 +174,6 @@ export default function BasketPage() {
     return total;
   }, [optimization?.itemPrices, effectiveSelections]);
 
-  // Count how many overrides differ from algorithm
   const overrideCount = useMemo(() => {
     let count = 0;
     for (const [productId, storeId] of Object.entries(preferredStores)) {
@@ -190,28 +187,39 @@ export default function BasketPage() {
 
   if (items.length === 0) {
     return (
-      <div className="container mx-auto px-4 py-16 text-center">
-        <ShoppingCart className="mx-auto h-16 w-16 text-muted-foreground/30" />
-        <h1 className="mt-4 text-2xl font-bold">Your basket is empty</h1>
-        <p className="mt-2 text-muted-foreground">
-          Start adding items to compare prices and plan your trip
+      <motion.div
+        className="container mx-auto px-4 py-16 text-center"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <div className="mx-auto w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-4">
+          <ShoppingCart className="h-10 w-10 text-muted-foreground/40" />
+        </div>
+        <h1 className="text-2xl font-bold">Your basket is empty</h1>
+        <p className="mt-2 text-muted-foreground max-w-sm mx-auto">
+          Start adding items to compare prices across all 5 stores and plan
+          your shopping trip
         </p>
         <Link href="/search">
-          <Button className="mt-6 bg-green-600 hover:bg-green-700">
+          <Button className="mt-6 rounded-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 px-8 shadow-md shadow-green-500/20">
             Start Shopping
           </Button>
         </Link>
-      </div>
+      </motion.div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <motion.div
+      className="container mx-auto px-4 py-6 sm:py-8"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+    >
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-3xl font-bold">Basket Comparison</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold">Basket Comparison</h1>
+          <p className="text-sm text-muted-foreground">
             {items.length} item{items.length !== 1 ? "s" : ""} &mdash; compare
             prices across all stores
           </p>
@@ -221,30 +229,185 @@ export default function BasketPage() {
             <Button
               variant="outline"
               size="sm"
+              className="rounded-lg"
               onClick={() => {
                 for (const productId of Object.keys(preferredStores)) {
                   clearPreferredStore(productId);
                 }
               }}
             >
-              <RotateCcw className="mr-1.5 h-4 w-4" />
-              Reset Overrides
+              <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+              Reset
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={clearBasket}>
-            <Trash2 className="mr-1.5 h-4 w-4" />
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-lg"
+            onClick={clearBasket}
+          >
+            <Trash2 className="mr-1.5 h-3.5 w-3.5" />
             Clear All
           </Button>
         </div>
       </div>
 
-      <div className="grid gap-8 xl:grid-cols-4">
-        {/* Main comparison grid */}
-        <div className="xl:col-span-3 space-y-4">
+      {/* On mobile: sidebar cards first, then comparison */}
+      <div className="grid gap-6 xl:grid-cols-4">
+        {/* Sidebar — shown first on mobile, right on desktop */}
+        <div className="xl:col-span-1 xl:order-2 space-y-4">
           {optimizing ? (
-            <Card>
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-6 text-center">
+                <div className="animate-spin h-8 w-8 border-2 border-green-500 border-t-transparent rounded-full mx-auto" />
+                <p className="mt-3 text-sm text-muted-foreground">
+                  Finding the best prices...
+                </p>
+              </CardContent>
+            </Card>
+          ) : optimization ? (
+            <>
+              {/* Summary cards on mobile: horizontal scroll */}
+              <div className="flex xl:flex-col gap-3 overflow-x-auto pb-2 xl:pb-0 -mx-4 px-4 xl:mx-0 xl:px-0 snap-x">
+                {/* Best Single Store */}
+                <Card className="border-0 shadow-sm min-w-[240px] xl:min-w-0 snap-start shrink-0 xl:shrink">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Store className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Best Single Store
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <StoreLogo
+                        slug={optimization.singleStoreBest.store.slug}
+                        name={optimization.singleStoreBest.store.name}
+                      />
+                      <div>
+                        <p className="text-sm font-semibold">
+                          {optimization.singleStoreBest.store.name}
+                        </p>
+                        <p className="text-2xl font-bold tabular-nums">
+                          {formatPrice(optimization.singleStoreBest.total)}
+                        </p>
+                      </div>
+                    </div>
+                    {optimization.singleStoreBest.missingItems.length > 0 && (
+                      <p className="mt-2 text-[10px] text-amber-600">
+                        Missing:{" "}
+                        {optimization.singleStoreBest.missingItems.join(", ")}
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Smart Split */}
+                <Card className="border-0 shadow-sm min-w-[240px] xl:min-w-0 snap-start shrink-0 xl:shrink bg-gradient-to-br from-green-50 to-emerald-50 relative overflow-hidden">
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-green-400 to-emerald-500" />
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Sparkles className="h-4 w-4 text-green-600" />
+                      <span className="text-xs font-semibold uppercase tracking-wide text-green-700">
+                        Smart Split
+                      </span>
+                    </div>
+                    <p className="text-3xl font-bold text-green-600 tabular-nums">
+                      {formatPrice(optimization.multiStoreBest.total)}
+                    </p>
+                    {optimization.savings > 0 && (
+                      <Badge
+                        variant="success"
+                        className="mt-2 rounded-full"
+                      >
+                        <TrendingDown className="mr-1 h-3 w-3" />
+                        Save {formatPrice(optimization.savings)} (
+                        {optimization.savingsPercentage.toFixed(1)}%)
+                      </Badge>
+                    )}
+                    <Separator className="my-3" />
+                    <div className="space-y-2">
+                      {optimization.multiStoreBest.stores.map((sg) => (
+                        <div
+                          key={sg.store.id}
+                          className="flex items-center justify-between"
+                        >
+                          <div className="flex items-center gap-2">
+                            <StoreLogo
+                              slug={sg.store.slug}
+                              name={sg.store.name}
+                              size="sm"
+                            />
+                            <div>
+                              <p className="text-xs font-medium">
+                                {sg.store.name}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground">
+                                {sg.items.length} item
+                                {sg.items.length !== 1 ? "s" : ""}
+                              </p>
+                            </div>
+                          </div>
+                          <span className="text-sm font-bold tabular-nums">
+                            {formatPrice(sg.subtotal)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Custom choice */}
+                {hasOverrides && (
+                  <Card className="border-0 shadow-sm min-w-[240px] xl:min-w-0 snap-start shrink-0 xl:shrink bg-gradient-to-br from-blue-50 to-indigo-50">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <ShoppingCart className="h-4 w-4 text-blue-600" />
+                        <span className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+                          Your Choice
+                        </span>
+                      </div>
+                      <p className="text-3xl font-bold text-blue-600 tabular-nums">
+                        {formatPrice(customTotal)}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {overrideCount} override
+                        {overrideCount !== 1 ? "s" : ""}
+                      </p>
+                      {customTotal > optimization.multiStoreBest.total && (
+                        <p className="mt-1 text-xs text-amber-600">
+                          +
+                          {formatPrice(
+                            customTotal - optimization.multiStoreBest.total
+                          )}{" "}
+                          vs smart split
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+
+              {/* Plan Trip CTA */}
+              <Link href="/trip" className="block">
+                <Button
+                  className="w-full rounded-xl bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-md shadow-green-500/20"
+                  size="lg"
+                >
+                  <MapPin className="mr-2 h-5 w-5" />
+                  Plan My Trip
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+            </>
+          ) : null}
+        </div>
+
+        {/* Main comparison grid */}
+        <div className="xl:col-span-3 xl:order-1 space-y-4">
+          {optimizing ? (
+            <Card className="border-0 shadow-sm">
               <CardContent className="p-12 text-center">
-                <div className="animate-spin h-10 w-10 border-2 border-green-600 border-t-transparent rounded-full mx-auto" />
+                <div className="animate-spin h-10 w-10 border-2 border-green-500 border-t-transparent rounded-full mx-auto" />
                 <p className="mt-4 text-muted-foreground">
                   Comparing prices across all stores...
                 </p>
@@ -252,21 +415,20 @@ export default function BasketPage() {
             </Card>
           ) : optimization?.itemPrices ? (
             <>
-              {/* Comparison Table */}
-              <Card>
+              {/* Desktop: Table view */}
+              <Card className="border-0 shadow-sm hidden md:block">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg">Price Comparison</CardTitle>
                   <p className="text-sm text-muted-foreground">
-                    Click any price to select that store for an item. The
-                    cheapest price is highlighted in green.
+                    Click any price to select that store for an item
                   </p>
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b bg-muted/50">
-                          <th className="text-left p-3 font-semibold min-w-[200px]">
+                        <tr className="border-b bg-muted/30">
+                          <th className="text-left p-3 font-semibold min-w-[180px]">
                             Product
                           </th>
                           <th className="text-center p-3 font-semibold w-16">
@@ -275,7 +437,7 @@ export default function BasketPage() {
                           {allStores.map((store) => (
                             <th
                               key={store.id}
-                              className="text-center p-2 min-w-[110px]"
+                              className="text-center p-2 min-w-[100px]"
                             >
                               <div className="flex flex-col items-center gap-1">
                                 <StoreLogo
@@ -284,17 +446,15 @@ export default function BasketPage() {
                                   size="sm"
                                 />
                                 <span className="text-[10px] font-medium leading-tight">
-                                  {store.name}
+                                  {store.name.split(" ")[0]}
                                 </span>
                               </div>
                             </th>
                           ))}
-                          <th className="text-center p-3 font-semibold min-w-[90px]">
-                            Selected
+                          <th className="text-center p-3 font-semibold min-w-[80px]">
+                            Total
                           </th>
-                          <th className="text-center p-3 w-10">
-                            <Trash2 className="h-4 w-4 mx-auto text-muted-foreground" />
-                          </th>
+                          <th className="text-center p-3 w-10" />
                         </tr>
                       </thead>
                       <tbody>
@@ -328,9 +488,8 @@ export default function BasketPage() {
                           return (
                             <tr
                               key={itemData.productId}
-                              className="border-b last:border-b-0 hover:bg-muted/30 transition-colors"
+                              className="border-b last:border-b-0 hover:bg-muted/20 transition-colors"
                             >
-                              {/* Product info */}
                               <td className="p-3">
                                 <Link
                                   href={`/product/${basketItem.productSlug}`}
@@ -345,19 +504,11 @@ export default function BasketPage() {
                                     {basketItem.brand}
                                   </p>
                                 )}
-                                {basketItem.weight && basketItem.weightUnit && (
-                                  <p className="text-[10px] text-muted-foreground">
-                                    {basketItem.weight}
-                                    {basketItem.weightUnit}
-                                  </p>
-                                )}
                               </td>
-
-                              {/* Quantity */}
                               <td className="p-3 text-center">
-                                <div className="inline-flex items-center rounded border text-xs">
+                                <div className="inline-flex items-center rounded-lg border text-xs">
                                   <button
-                                    className="px-2 py-1 hover:bg-accent transition-colors"
+                                    className="px-2.5 py-1.5 hover:bg-accent transition-colors rounded-l-lg"
                                     onClick={() =>
                                       updateQuantity(
                                         itemData.productId,
@@ -367,11 +518,11 @@ export default function BasketPage() {
                                   >
                                     -
                                   </button>
-                                  <span className="px-2 py-1 font-medium">
+                                  <span className="px-2.5 py-1.5 font-bold tabular-nums">
                                     {basketItem.quantity}
                                   </span>
                                   <button
-                                    className="px-2 py-1 hover:bg-accent transition-colors"
+                                    className="px-2.5 py-1.5 hover:bg-accent transition-colors rounded-r-lg"
                                     onClick={() =>
                                       updateQuantity(
                                         itemData.productId,
@@ -383,8 +534,6 @@ export default function BasketPage() {
                                   </button>
                                 </div>
                               </td>
-
-                              {/* Store price cells */}
                               {allStores.map((store) => {
                                 const storePrice = itemData.prices.find(
                                   (p) => p.storeId === store.id
@@ -422,16 +571,15 @@ export default function BasketPage() {
                                             );
                                           }
                                         }}
-                                        className={`relative w-full rounded-lg px-2 py-2 text-sm transition-all cursor-pointer
-                                          ${
-                                            isSelected
-                                              ? "font-bold shadow-sm"
-                                              : isCheapest
-                                                ? "bg-green-50/60 text-green-700 hover:bg-green-50"
-                                                : isMostExpensive
-                                                  ? "text-red-500 hover:bg-red-50/50"
-                                                  : "text-foreground hover:bg-accent"
-                                          }`}
+                                        className={`relative w-full rounded-lg px-2 py-2 text-sm transition-all cursor-pointer tabular-nums ${
+                                          isSelected
+                                            ? "font-bold shadow-sm"
+                                            : isCheapest
+                                              ? "bg-green-50/60 text-green-700 hover:bg-green-50"
+                                              : isMostExpensive
+                                                ? "text-red-400 hover:bg-red-50/50"
+                                                : "text-foreground hover:bg-accent"
+                                        }`}
                                         style={
                                           isSelected
                                             ? {
@@ -462,14 +610,11 @@ export default function BasketPage() {
                                   </td>
                                 );
                               })}
-
-                              {/* Selected line total */}
                               <td className="p-3 text-center">
-                                <span className="font-semibold text-sm">
+                                <span className="font-bold text-sm tabular-nums">
                                   {selectedPrice
                                     ? formatPrice(
-                                        selectedPrice.price *
-                                          itemData.quantity
+                                        selectedPrice.price * itemData.quantity
                                       )
                                     : "---"}
                                 </span>
@@ -479,11 +624,9 @@ export default function BasketPage() {
                                   </span>
                                 )}
                               </td>
-
-                              {/* Remove */}
                               <td className="p-2 text-center">
                                 <button
-                                  className="text-muted-foreground hover:text-destructive transition-colors p-1"
+                                  className="text-muted-foreground hover:text-red-500 transition-colors p-1 rounded-lg hover:bg-red-50"
                                   onClick={() =>
                                     removeItem(itemData.productId)
                                   }
@@ -496,7 +639,7 @@ export default function BasketPage() {
                         })}
 
                         {/* Totals row */}
-                        <tr className="bg-muted/30 font-semibold">
+                        <tr className="bg-muted/20 font-bold">
                           <td className="p-3" colSpan={2}>
                             Total
                           </td>
@@ -506,7 +649,9 @@ export default function BasketPage() {
                                 const p = item.prices.find(
                                   (pr) => pr.storeId === store.id
                                 );
-                                return sum + (p ? p.price * item.quantity : 0);
+                                return (
+                                  sum + (p ? p.price * item.quantity : 0)
+                                );
                               }, 0);
                             const allAvailable =
                               optimization.itemPrices.every((item) =>
@@ -517,19 +662,19 @@ export default function BasketPage() {
                             return (
                               <td
                                 key={store.id}
-                                className="p-2 text-center text-sm"
+                                className="p-2 text-center text-sm tabular-nums"
                               >
                                 {allAvailable ? (
                                   formatPrice(storeTotal)
                                 ) : (
-                                  <span className="text-muted-foreground text-xs">
-                                    Incomplete
+                                  <span className="text-muted-foreground text-xs font-normal">
+                                    N/A
                                   </span>
                                 )}
                               </td>
                             );
                           })}
-                          <td className="p-3 text-center text-base text-green-700">
+                          <td className="p-3 text-center text-base text-green-600 tabular-nums">
                             {formatPrice(customTotal)}
                           </td>
                           <td />
@@ -540,207 +685,285 @@ export default function BasketPage() {
                 </CardContent>
               </Card>
 
-              {/* Summary bar comparing algorithm vs your choice */}
-              {hasOverrides && (
-                <Card className="border-amber-200 bg-amber-50/50">
-                  <CardContent className="p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-4">
-                      <div className="flex items-center gap-6">
-                        <div>
-                          <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
-                            Algorithm Recommendation
-                          </p>
-                          <p className="text-lg font-bold text-green-600">
-                            {formatPrice(optimization.multiStoreBest.total)}
-                          </p>
-                        </div>
-                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                        <div>
-                          <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
-                            Your Custom Choice
-                          </p>
-                          <p className="text-lg font-bold">
-                            {formatPrice(customTotal)}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        {customTotal > optimization.multiStoreBest.total && (
-                          <Badge variant="outline" className="text-amber-700 border-amber-300">
-                            +{formatPrice(customTotal - optimization.multiStoreBest.total)} vs optimal
-                          </Badge>
-                        )}
-                        {customTotal < optimization.multiStoreBest.total && (
-                          <Badge variant="success">
-                            {formatPrice(optimization.multiStoreBest.total - customTotal)} saved vs algorithm
-                          </Badge>
-                        )}
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {overrideCount} override{overrideCount !== 1 ? "s" : ""}
-                        </p>
-                      </div>
-                    </div>
+              {/* Mobile: Card view */}
+              <div className="md:hidden space-y-3">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-base font-bold">Price Comparison</h2>
+                  <p className="text-xs text-muted-foreground">
+                    Tap a store to select it
+                  </p>
+                </div>
+
+                <AnimatePresence>
+                  {optimization.itemPrices.map((itemData, idx) => {
+                    const basketItem = items.find(
+                      (i) => i.productId === itemData.productId
+                    );
+                    if (!basketItem) return null;
+
+                    const cheapestPrice = Math.min(
+                      ...itemData.prices.map((p) => p.price)
+                    );
+                    const selectedStoreId = effectiveSelections.get(
+                      itemData.productId
+                    );
+                    const algoStoreId = algorithmChoices.get(
+                      itemData.productId
+                    );
+                    const isOverridden =
+                      preferredStores[itemData.productId] !== undefined &&
+                      preferredStores[itemData.productId] !== algoStoreId;
+                    const selectedPrice = itemData.prices.find(
+                      (p) => p.storeId === selectedStoreId
+                    );
+
+                    return (
+                      <motion.div
+                        key={itemData.productId}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.05 }}
+                      >
+                        <Card className="border-0 shadow-sm overflow-hidden">
+                          <CardContent className="p-4">
+                            {/* Product header */}
+                            <div className="flex items-start justify-between gap-2 mb-3">
+                              <div className="flex-1 min-w-0">
+                                <Link
+                                  href={`/product/${basketItem.productSlug}`}
+                                  className="font-semibold text-sm hover:text-green-600 transition-colors leading-tight line-clamp-1"
+                                >
+                                  {itemData.productName}
+                                </Link>
+                                {basketItem.brand && (
+                                  <p className="text-[11px] text-muted-foreground">
+                                    {basketItem.brand}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <div className="inline-flex items-center rounded-lg border text-xs">
+                                  <button
+                                    className="px-2 py-1 hover:bg-accent transition-colors"
+                                    onClick={() =>
+                                      updateQuantity(
+                                        itemData.productId,
+                                        basketItem.quantity - 1
+                                      )
+                                    }
+                                  >
+                                    -
+                                  </button>
+                                  <span className="px-2 py-1 font-bold tabular-nums">
+                                    {basketItem.quantity}
+                                  </span>
+                                  <button
+                                    className="px-2 py-1 hover:bg-accent transition-colors"
+                                    onClick={() =>
+                                      updateQuantity(
+                                        itemData.productId,
+                                        basketItem.quantity + 1
+                                      )
+                                    }
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                                <button
+                                  className="text-muted-foreground hover:text-red-500 transition-colors p-1"
+                                  onClick={() =>
+                                    removeItem(itemData.productId)
+                                  }
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Store price buttons - grid */}
+                            <div className="grid grid-cols-5 gap-1.5">
+                              {allStores.map((store) => {
+                                const storePrice = itemData.prices.find(
+                                  (p) => p.storeId === store.id
+                                );
+                                const isCheapest =
+                                  storePrice?.price === cheapestPrice;
+                                const isSelected =
+                                  selectedStoreId === store.id;
+                                const storeColor =
+                                  STORE_COLORS[store.slug] || "#666";
+
+                                return (
+                                  <button
+                                    key={store.id}
+                                    onClick={() => {
+                                      if (!storePrice) return;
+                                      if (
+                                        preferredStores[
+                                          itemData.productId
+                                        ] === store.id
+                                      ) {
+                                        clearPreferredStore(
+                                          itemData.productId
+                                        );
+                                      } else {
+                                        setPreferredStore(
+                                          itemData.productId,
+                                          store.id
+                                        );
+                                      }
+                                    }}
+                                    disabled={!storePrice}
+                                    className={`relative rounded-xl p-2 text-center transition-all ${
+                                      isSelected
+                                        ? "shadow-sm"
+                                        : isCheapest
+                                          ? "bg-green-50/60"
+                                          : "bg-muted/30"
+                                    } ${!storePrice ? "opacity-40" : "active:scale-95"}`}
+                                    style={
+                                      isSelected
+                                        ? {
+                                            backgroundColor: isCheapest
+                                              ? "#dcfce7"
+                                              : "#f3f4f6",
+                                            boxShadow: `0 0 0 2px ${storeColor}`,
+                                          }
+                                        : undefined
+                                    }
+                                  >
+                                    <StoreLogo
+                                      slug={store.slug}
+                                      name={store.name}
+                                      size="sm"
+                                    />
+                                    <p className="mt-1 text-[11px] font-bold tabular-nums">
+                                      {storePrice
+                                        ? formatPrice(storePrice.price)
+                                        : "N/A"}
+                                    </p>
+                                    {isCheapest && storePrice && (
+                                      <p className="text-[8px] text-green-600 font-medium">
+                                        best
+                                      </p>
+                                    )}
+                                    {isSelected && (
+                                      <Check className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 text-white rounded-full p-0.5 bg-green-500" />
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+
+                            {/* Selected total */}
+                            <div className="mt-2.5 flex items-center justify-between pt-2 border-t border-dashed">
+                              <span className="text-xs text-muted-foreground">
+                                {isOverridden ? (
+                                  <span className="text-amber-600 font-medium">
+                                    Override active
+                                  </span>
+                                ) : (
+                                  "Algorithm pick"
+                                )}
+                              </span>
+                              <span className="font-bold tabular-nums">
+                                {selectedPrice
+                                  ? formatPrice(
+                                      selectedPrice.price * itemData.quantity
+                                    )
+                                  : "---"}
+                              </span>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+
+                {/* Mobile total */}
+                <Card className="border-0 shadow-sm bg-muted/30">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <span className="font-bold">Your Total</span>
+                    <span className="text-xl font-bold text-green-600 tabular-nums">
+                      {formatPrice(customTotal)}
+                    </span>
                   </CardContent>
                 </Card>
-              )}
-            </>
-          ) : null}
-        </div>
+              </div>
 
-        {/* Sidebar */}
-        <div className="space-y-4">
-          {optimizing ? (
-            <Card>
-              <CardContent className="p-6 text-center">
-                <div className="animate-spin h-8 w-8 border-2 border-green-600 border-t-transparent rounded-full mx-auto" />
-                <p className="mt-3 text-sm text-muted-foreground">
-                  Finding the best prices...
-                </p>
-              </CardContent>
-            </Card>
-          ) : optimization ? (
-            <>
-              {/* Best Single Store */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Store className="h-4 w-4" />
-                    Best Single Store
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-3">
-                    <StoreLogo
-                      slug={optimization.singleStoreBest.store.slug}
-                      name={optimization.singleStoreBest.store.name}
-                    />
-                    <div>
-                      <p className="font-semibold">
-                        {optimization.singleStoreBest.store.name}
-                      </p>
-                      <p className="text-2xl font-bold">
-                        {formatPrice(optimization.singleStoreBest.total)}
-                      </p>
-                    </div>
-                  </div>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Everything from one store
-                  </p>
-                  {optimization.singleStoreBest.missingItems.length > 0 && (
-                    <p className="mt-1 text-xs text-amber-600">
-                      Not available:{" "}
-                      {optimization.singleStoreBest.missingItems.join(", ")}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Smart Split */}
-              <Card className="border-green-200 bg-green-50">
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-base text-green-800">
-                    <TrendingDown className="h-4 w-4" />
-                    Smart Split (Cheapest)
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-3xl font-bold text-green-600">
-                    {formatPrice(optimization.multiStoreBest.total)}
-                  </p>
-
-                  {optimization.savings > 0 && (
-                    <Badge variant="success" className="mt-2">
-                      Save {formatPrice(optimization.savings)} (
-                      {optimization.savingsPercentage.toFixed(1)}%)
-                    </Badge>
-                  )}
-
-                  <Separator className="my-3" />
-
-                  <div className="space-y-2">
-                    {optimization.multiStoreBest.stores.map((storeGroup) => (
-                      <div
-                        key={storeGroup.store.id}
-                        className="flex items-center justify-between"
-                      >
-                        <div className="flex items-center gap-2">
-                          <StoreLogo
-                            slug={storeGroup.store.slug}
-                            name={storeGroup.store.name}
-                            size="sm"
-                          />
+              {/* Override comparison bar */}
+              {hasOverrides && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <Card className="border-amber-200/50 bg-gradient-to-r from-amber-50/80 to-orange-50/50 border-0 shadow-sm">
+                    <CardContent className="p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex items-center gap-4 sm:gap-6">
                           <div>
-                            <p className="text-xs font-medium">
-                              {storeGroup.store.name}
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">
+                              Algorithm
                             </p>
-                            <p className="text-[10px] text-muted-foreground">
-                              {storeGroup.items.length} item
-                              {storeGroup.items.length !== 1 ? "s" : ""}
+                            <p className="text-lg font-bold text-green-600 tabular-nums">
+                              {formatPrice(
+                                optimization.multiStoreBest.total
+                              )}
+                            </p>
+                          </div>
+                          <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <div>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">
+                              Your Choice
+                            </p>
+                            <p className="text-lg font-bold tabular-nums">
+                              {formatPrice(customTotal)}
                             </p>
                           </div>
                         </div>
-                        <span className="text-sm font-semibold">
-                          {formatPrice(storeGroup.subtotal)}
-                        </span>
+                        <div className="text-right">
+                          {customTotal >
+                            optimization.multiStoreBest.total && (
+                            <Badge
+                              variant="outline"
+                              className="text-amber-700 border-amber-300 rounded-full"
+                            >
+                              +
+                              {formatPrice(
+                                customTotal -
+                                  optimization.multiStoreBest.total
+                              )}{" "}
+                              vs optimal
+                            </Badge>
+                          )}
+                          {customTotal <
+                            optimization.multiStoreBest.total && (
+                            <Badge
+                              variant="success"
+                              className="rounded-full"
+                            >
+                              {formatPrice(
+                                optimization.multiStoreBest.total -
+                                  customTotal
+                              )}{" "}
+                              saved
+                            </Badge>
+                          )}
+                          <p className="text-[10px] text-muted-foreground mt-1">
+                            {overrideCount} override
+                            {overrideCount !== 1 ? "s" : ""}
+                          </p>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Custom choice card when overrides exist */}
-              {hasOverrides && (
-                <Card className="border-blue-200 bg-blue-50">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-base text-blue-800">
-                      <ShoppingCart className="h-4 w-4" />
-                      Your Custom Choice
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-3xl font-bold text-blue-600">
-                      {formatPrice(customTotal)}
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {overrideCount} item
-                      {overrideCount !== 1 ? "s" : ""} overridden
-                    </p>
-                    {customTotal > optimization.multiStoreBest.total && (
-                      <p className="mt-1 text-xs text-amber-600">
-                        +
-                        {formatPrice(
-                          customTotal - optimization.multiStoreBest.total
-                        )}{" "}
-                        vs smart split
-                      </p>
-                    )}
-                    {customTotal < optimization.multiStoreBest.total && (
-                      <Badge variant="success" className="mt-1">
-                        {formatPrice(
-                          optimization.multiStoreBest.total - customTotal
-                        )}{" "}
-                        less than smart split
-                      </Badge>
-                    )}
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </motion.div>
               )}
-
-              {/* Plan Trip CTA */}
-              <Link href="/trip">
-                <Button
-                  className="w-full bg-green-600 hover:bg-green-700"
-                  size="lg"
-                >
-                  <MapPin className="mr-2 h-5 w-5" />
-                  Plan My Trip
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
             </>
           ) : null}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

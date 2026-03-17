@@ -1,62 +1,119 @@
 import Link from "next/link";
+import { STORES } from "@/lib/constants";
 
 export function Footer() {
   return (
-    <footer className="border-t bg-muted/50">
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+    <footer className="border-t bg-gradient-to-b from-background to-muted/30">
+      <div className="container mx-auto px-4 py-12 lg:py-16">
+        <div className="grid grid-cols-2 gap-8 lg:grid-cols-4">
           {/* Brand */}
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-600 text-white font-bold">
+          <div className="col-span-2 lg:col-span-1">
+            <div className="flex items-center gap-2.5 mb-4">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-green-500 to-green-700 text-white font-bold shadow-md shadow-green-500/20">
                 G
               </div>
-              <span className="text-lg font-bold">
-                Grocery<span className="text-green-600">Saver</span>
+              <span className="text-lg font-bold tracking-tight">
+                Grocery<span className="text-gradient">Saver</span>
               </span>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Compare grocery prices across Ireland&apos;s top supermarkets. Save money on every shop.
+            <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
+              Compare grocery prices across Ireland&apos;s top supermarkets.
+              Save money on every weekly shop in Dublin.
             </p>
+            <div className="mt-4 flex gap-2">
+              {STORES.map((store) => (
+                <div
+                  key={store.slug}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg text-white text-[10px] font-bold opacity-60 hover:opacity-100 transition-opacity"
+                  style={{ backgroundColor: store.color }}
+                  title={store.name}
+                >
+                  {store.name[0]}
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Quick Links */}
           <div>
-            <h3 className="mb-4 text-sm font-semibold">Quick Links</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link href="/search" className="hover:text-foreground transition-colors">Search Products</Link></li>
-              <li><Link href="/categories" className="hover:text-foreground transition-colors">Browse Categories</Link></li>
-              <li><Link href="/basket" className="hover:text-foreground transition-colors">My Basket</Link></li>
-              <li><Link href="/trip" className="hover:text-foreground transition-colors">Trip Planner</Link></li>
+            <h3 className="mb-4 text-sm font-semibold tracking-wide uppercase text-muted-foreground/70">
+              Quick Links
+            </h3>
+            <ul className="space-y-2.5 text-sm">
+              {[
+                { href: "/search", label: "Search Products" },
+                { href: "/categories", label: "Browse Categories" },
+                { href: "/basket", label: "My Basket" },
+                { href: "/trip", label: "Trip Planner" },
+              ].map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1 group"
+                  >
+                    <span className="w-0 group-hover:w-2 transition-all overflow-hidden text-green-600">
+                      &rarr;
+                    </span>
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
           {/* Stores */}
           <div>
-            <h3 className="mb-4 text-sm font-semibold">Stores We Compare</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>Tesco Ireland</li>
-              <li>Dunnes Stores</li>
-              <li>Lidl Ireland</li>
-              <li>Aldi Ireland</li>
-              <li>SuperValu</li>
+            <h3 className="mb-4 text-sm font-semibold tracking-wide uppercase text-muted-foreground/70">
+              Stores We Compare
+            </h3>
+            <ul className="space-y-2.5 text-sm">
+              {STORES.map((store) => (
+                <li
+                  key={store.slug}
+                  className="text-muted-foreground flex items-center gap-2"
+                >
+                  <div
+                    className="h-1.5 w-1.5 rounded-full"
+                    style={{ backgroundColor: store.color }}
+                  />
+                  {store.name}
+                </li>
+              ))}
             </ul>
           </div>
 
           {/* About */}
-          <div>
-            <h3 className="mb-4 text-sm font-semibold">About</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link href="/about" className="hover:text-foreground transition-colors">How It Works</Link></li>
-              <li><Link href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link></li>
-              <li><Link href="/terms" className="hover:text-foreground transition-colors">Terms of Service</Link></li>
+          <div className="hidden lg:block">
+            <h3 className="mb-4 text-sm font-semibold tracking-wide uppercase text-muted-foreground/70">
+              About
+            </h3>
+            <ul className="space-y-2.5 text-sm">
+              {[
+                { href: "/about", label: "How It Works" },
+                { href: "/privacy", label: "Privacy Policy" },
+                { href: "/terms", label: "Terms of Service" },
+              ].map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
         </div>
 
-        <div className="mt-8 border-t pt-8 text-center text-sm text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} GrocerySaver. Helping Dublin families save on groceries.</p>
-          <p className="mt-1">Prices are updated regularly but may not reflect in-store prices exactly.</p>
+        <div className="mt-10 border-t pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
+          <p>
+            &copy; {new Date().getFullYear()} GrocerySaver. Helping Dublin
+            families save on groceries.
+          </p>
+          <p className="text-center sm:text-right">
+            Prices updated regularly. May not reflect exact in-store prices.
+          </p>
         </div>
       </div>
     </footer>
