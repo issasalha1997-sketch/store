@@ -9,6 +9,7 @@ import {
   MapPin,
   User,
   ChevronRight,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useBasket } from "@/hooks/useBasket";
@@ -113,6 +114,11 @@ export function Header() {
               </AnimatePresence>
             </Button>
           </Link>
+          <Link href="/admin" className="hidden md:block">
+            <Button variant="ghost" size="icon" title="Admin Panel">
+              <Settings className="h-5 w-5" />
+            </Button>
+          </Link>
           <Link href="/profile" className="hidden md:block">
             <Button variant="ghost" size="icon">
               <User className="h-5 w-5" />
@@ -158,6 +164,7 @@ export function Header() {
             <nav className="container mx-auto flex flex-col gap-1 px-4 py-3">
               {[
                 ...navLinks,
+                { href: "/admin", label: "Admin Panel", icon: Settings },
                 { href: "/profile", label: "Profile", icon: User },
               ].map((link, i) => {
                 const isActive = pathname === link.href;
