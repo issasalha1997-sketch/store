@@ -296,7 +296,6 @@ async function findOrCreateProduct(
     data: {
       name: canonical,
       slug: productSlug,
-      canonicalName: canonical,
       brand: scraped.brand ?? null,
       weight: scraped.weight ?? null,
       weightUnit: scraped.weightUnit ?? null,
