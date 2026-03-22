@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import {
-  getProductsForStore,
+  scrapeStore,
   slugify,
+  normalizeProductName,
   CATEGORY_MAP,
   type ScrapedProduct,
 } from "@/lib/scraper/products";
@@ -16,6 +17,20 @@ export const maxDuration = 60;
  */
 export async function GET() {
   try {
+    // Clean up stuck "running" scrape runs older than 10 minutes
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+    await prisma.scrapeRun.updateMany({
+      where: {
+        status: "running",
+        startedAt: { lt: tenMinutesAgo },
+      },
+      data: {
+        status: "failed",
+        errorLog: "Timed out — marked as failed automatically",
+        completedAt: new Date(),
+      },
+    });
+
     const stores = ["tesco", "supervalu", "dunnes", "lidl", "aldi"];
 
     const storeStatuses = await Promise.all(
@@ -154,15 +169,19 @@ async function runStoreImport(storeSlug: string, startedAt: Date) {
     throw new Error(`Store '${storeSlug}' not found in database`);
   }
 
-  // 2. Get products from curated data
-  const scrapedProducts = getProductsForStore(storeSlug);
+  // 2. Get products (attempts live scraping, falls back to curated data)
+  const scrapeResult = await scrapeStore(storeSlug);
+  const scrapedProducts = scrapeResult.products;
   if (scrapedProducts.length === 0) {
     throw new Error(`No product data available for ${storeSlug}`);
   }
+  console.log(
+    `[${storeSlug}] Using ${scrapeResult.source} data (${scrapedProducts.length} products)${scrapeResult.error ? ` — live error: ${scrapeResult.error}` : ""}`
+  );
 
   // 3. Load categories
   const categories = await prisma.category.findMany();
-  const categoryBySlug = new Map(categories.map((c) => [c.slug, c.id]));
+  const categoryBySlug = new Map<string, string>(categories.map((c: { slug: string; id: string }) => [c.slug, c.id]));
 
   // 4. Process each product
   let pricesUpdated = 0;
@@ -243,7 +262,9 @@ async function findOrCreateProduct(
   scraped: ScrapedProduct,
   categoryBySlug: Map<string, string>
 ): Promise<string> {
-  const productSlug = slugify(scraped.name);
+  // Use normalized name for slug so cross-store products match
+  const canonical = normalizeProductName(scraped.name);
+  const productSlug = slugify(canonical);
 
   // Try to find existing product by slug
   const existing = await prisma.product.findUnique({
@@ -251,6 +272,13 @@ async function findOrCreateProduct(
   });
 
   if (existing) {
+    // Update imageUrl if the existing product doesn't have one
+    if (!existing.imageUrl && scraped.imageUrl) {
+      await prisma.product.update({
+        where: { id: existing.id },
+        data: { imageUrl: scraped.imageUrl },
+      });
+    }
     return existing.id;
   }
 
@@ -263,17 +291,19 @@ async function findOrCreateProduct(
     }
   }
 
-  // Create new product
+  // Create new product — use the canonical name for display, keep original context
   const product = await prisma.product.create({
     data: {
-      name: scraped.name,
+      name: canonical,
       slug: productSlug,
+      canonicalName: canonical,
       brand: scraped.brand ?? null,
       weight: scraped.weight ?? null,
       weightUnit: scraped.weightUnit ?? null,
       barcode: scraped.barcode ?? null,
       categoryId: categoryId ?? null,
       imageUrl: scraped.imageUrl ?? null,
+      description: scraped.description ?? null,
       isActive: true,
     },
   });

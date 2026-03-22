@@ -228,6 +228,13 @@ export default function ProductDetailPage() {
             </div>
           </div>
 
+          {/* Description */}
+          {product.description && (
+            <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
+              {product.description}
+            </p>
+          )}
+
           {/* Rating */}
           {product.averageRating && (
             <div className="mt-3 flex items-center gap-2">

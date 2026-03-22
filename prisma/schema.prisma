@@ -53,11 +53,12 @@ model Category {
 }
 
 model Product {
-  id          String   @id @default(cuid())
-  name        String
-  slug        String   @unique
-  description String?
-  brand       String?
+  id            String   @id @default(cuid())
+  name          String
+  slug          String   @unique
+  canonicalName String?
+  description   String?
+  brand         String?
   imageUrl    String?
   barcode     String?  @unique
   weight      Float?

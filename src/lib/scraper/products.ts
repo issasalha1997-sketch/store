@@ -17,6 +17,7 @@ export interface ScrapedProduct {
   barcode?: string;
   imageUrl?: string;
   sourceUrl?: string;
+  description?: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -283,8 +284,89 @@ export const STORE_PRODUCTS: Record<string, ScrapedProduct[]> = {
   aldi: ALDI_PRODUCTS,
 };
 
+/** Returns curated (fallback) products for a store. */
 export function getProductsForStore(storeSlug: string): ScrapedProduct[] {
   return STORE_PRODUCTS[storeSlug] || [];
+}
+
+/** Attempts live scraping, falling back to curated data. */
+export async function scrapeStore(
+  storeSlug: string
+): Promise<{ products: ScrapedProduct[]; source: "live" | "fallback"; error?: string }> {
+  const { scrapeTesco } = await import("./tesco");
+  const { scrapeDunnes } = await import("./dunnes");
+  const { scrapeSuperValu } = await import("./supervalu");
+  const { scrapeLidl } = await import("./lidl");
+  const { scrapeAldi } = await import("./aldi");
+
+  const fallback = getProductsForStore(storeSlug);
+
+  switch (storeSlug) {
+    case "tesco":
+      return scrapeTesco(fallback);
+    case "dunnes":
+      return scrapeDunnes(fallback);
+    case "supervalu":
+      return scrapeSuperValu(fallback);
+    case "lidl":
+      return scrapeLidl(fallback);
+    case "aldi":
+      return scrapeAldi(fallback);
+    default:
+      return { products: fallback, source: "fallback" };
+  }
+}
+
+/**
+ * Strips store name prefixes and store-brand names to produce a canonical
+ * product name for cross-store matching.
+ * "Tesco Irish Whole Milk 2L" → "Irish Whole Milk 2L"
+ * "Dunnes Irish Whole Milk 2L" → "Irish Whole Milk 2L"
+ */
+const STORE_PREFIXES = [
+  "tesco",
+  "dunnes",
+  "lidl",
+  "aldi",
+  "supervalu",
+];
+
+const STORE_BRAND_NAMES = [
+  // Lidl brands
+  "creggan", "kilkeely", "coolmore", "ombra", "newgate", "eridanous",
+  "milbona", "ballyburren", "birchwood", "rowan hill", "kildevand",
+  "solevita", "bellarom", "freeway", "trattoria alfredo", "gelatelli",
+  "snaktastic", "w5", "formil",
+  // Aldi brands
+  "castlefarm", "greenvale", "clonbawn", "cucina", "the pantry",
+  "brooklea", "ashdale", "nature's glen", "village bakery", "aqua falls",
+  "nature's pick", "alcafé", "summit", "ocean trader", "carlos",
+  "four seasons", "grandessa", "dairyfine", "moser roth", "snackrite",
+  "belmont", "saxon", "magnum", "almat",
+];
+
+export function normalizeProductName(name: string): string {
+  let normalized = name.trim();
+
+  // Strip store name prefix (case-insensitive, only if at start)
+  for (const prefix of STORE_PREFIXES) {
+    const re = new RegExp(`^${prefix}\\s+`, "i");
+    if (re.test(normalized)) {
+      normalized = normalized.replace(re, "");
+      break;
+    }
+  }
+
+  // Strip store-brand names when they appear as the first word(s)
+  for (const brand of STORE_BRAND_NAMES) {
+    const re = new RegExp(`^${brand.replace(/['']/g, "[''']?")}\\s+`, "i");
+    if (re.test(normalized)) {
+      normalized = normalized.replace(re, "");
+      break;
+    }
+  }
+
+  return normalized.trim();
 }
 
 export function slugify(text: string): string {
