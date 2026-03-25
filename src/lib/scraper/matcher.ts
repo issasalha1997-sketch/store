@@ -66,29 +66,42 @@ function normalizeWeight(weight: number | undefined, unit: string | undefined): 
   return `${weight}${u}`;
 }
 
-/** Extract weight info from a product name */
+/** Extract weight info from a product name.
+ *  Returns the LAST matched weight as the canonical one,
+ *  and strips ALL weight/size patterns from the name.
+ *  e.g. "Whole Milk 1 Litre 1000ml" → cleanName: "Whole Milk", weightStr: "1000ml"
+ */
 function extractWeightFromName(name: string): { cleanName: string; weightStr: string } {
-  // Match patterns like: (227 g), 2L, 500g, 1.5kg, 6 Pack, 10pk, 200 ml
+  let cleanName = name;
+  let weightStr = "";
+
+  // Match patterns like: (227 g), 2L, 500g, 1.5kg, 6 Pack, 10pk, 200 ml, 1 Litre, 2.75litre
   const patterns = [
-    /\((\d+(?:\.\d+)?)\s*(kg|g|ml|l|cl|pk|pack|pce|pcs|ea|each)\)/i,
-    /\b(\d+(?:\.\d+)?)\s*(kg|g|ml|l|cl)\b/i,
-    /\b(\d+)\s*(pack|pk)\b/i,
+    /\((\d+(?:\.\d+)?)\s*(kg|g|ml|l|cl|pk|pack|pce|pcs|ea|each)\)/gi,
+    /\b(\d+(?:\.\d+)?)\s*(litre|liter|litres|liters)\b/gi,
+    /\b(\d+(?:\.\d+)?)\s*(kg|g|ml|l|cl)\b/gi,
+    /\b(\d+)\s*(pack|pk)\b/gi,
+    /\b(\d+)\s*(piece|pieces|pce|pcs|each|ea)\b/gi,
   ];
 
   for (const pat of patterns) {
-    const m = name.match(pat);
-    if (m) {
-      const weight = parseFloat(m[1]);
-      const unit = m[2].toLowerCase();
-      const cleanName = name.replace(m[0], "").trim();
-      return {
-        cleanName,
-        weightStr: normalizeWeight(weight, unit),
-      };
+    let match;
+    while ((match = pat.exec(cleanName)) !== null) {
+      const weight = parseFloat(match[1]);
+      let unit = match[2].toLowerCase();
+      // Normalize "litre" → "l"
+      if (unit.startsWith("litre") || unit.startsWith("liter")) unit = "l";
+      if (unit === "piece" || unit === "pieces") unit = "each";
+      const normalized = normalizeWeight(weight, unit);
+      if (normalized) weightStr = normalized; // keep the last (most specific) one
     }
+    // Reset regex lastIndex
+    pat.lastIndex = 0;
+    // Remove ALL matches of this pattern from the name
+    cleanName = cleanName.replace(pat, "").trim();
   }
 
-  return { cleanName: name, weightStr: "" };
+  return { cleanName, weightStr };
 }
 
 // ─── Core normalization ─────────────────────────────────────────────

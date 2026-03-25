@@ -1,43 +1,72 @@
 /**
- * REAL automated scraper for Irish grocery stores.
+ * REAL automated scraper for Irish grocery stores — API only, NO browser.
  *
- * Scrapes:
- *   - SuperValu: REST API (no browser needed)
- *   - Dunnes:    dunnesstoresgrocery.com via Chrome (search-based)
- *   - Tesco:     tesco.ie via Chrome (when not blocked by Akamai)
- *   - Aldi:      aldi.ie bakery section via Chrome
- *
- * Setup:
- *   npm install playwright
- *   npx playwright install chromium
- *   Chrome must be installed on your system!
+ * Both SuperValu and Dunnes use the same Mi9/Wynshop platform with open APIs.
  *
  * Usage:
  *   npx tsx scripts/scrape-all-real.ts              # all stores
  *   npx tsx scripts/scrape-all-real.ts supervalu     # SuperValu only
  *   npx tsx scripts/scrape-all-real.ts dunnes        # Dunnes only
- *   npx tsx scripts/scrape-all-real.ts tesco         # Tesco only
  */
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { canonicalProductName, productMatchSlug } from "../src/lib/scraper/matcher";
 import { CATEGORY_MAP } from "../src/lib/scraper/products";
-import { chromium, type Browser, type BrowserContext } from "playwright";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
 
 let catMap: Map<string, string>;
 
-// ─── DB helper ──────────────────────────────────────────────────
+// ─── Shared API helpers (both stores use same Mi9 platform) ─────
+
+interface Mi9Product {
+  sku: string;
+  name: string;
+  description?: string;
+  brand?: string;
+  priceNumeric: number;
+  pricePerUnit?: string;
+  unitOfSize?: { abbreviation: string; type: string; size: number };
+  image?: { default?: string; cell?: string };
+  tprPrice?: unknown;
+}
+
+async function fetchMi9Page(
+  apiBase: string,
+  storeId: string,
+  categoryId: string,
+  take: number,
+  skip: number
+): Promise<{ total: number; items: Mi9Product[] }> {
+  const url = `${apiBase}/stores/${storeId}/categories/${categoryId}/search?take=${take}&skip=${skip}`;
+  const res = await fetch(url, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      Accept: "application/json",
+      "Accept-Language": "en-IE,en;q=0.9",
+    },
+    signal: AbortSignal.timeout(20000),
+  });
+  if (!res.ok) throw new Error(`API ${res.status}: ${url}`);
+  return res.json();
+}
 
 async function upsertProduct(
   storeId: string,
   name: string,
   price: number,
   category: string,
-  extra?: { imageUrl?: string; brand?: string; unitPrice?: number; unitPriceUnit?: string; description?: string; weight?: number; weightUnit?: string }
+  extra?: {
+    imageUrl?: string;
+    brand?: string;
+    unitPrice?: number;
+    unitPriceUnit?: string;
+    description?: string;
+    weight?: number;
+    weightUnit?: string;
+  }
 ): Promise<boolean> {
   if (price <= 0 || !name || name.length < 3) return false;
 
@@ -46,33 +75,28 @@ async function upsertProduct(
   const matchSlug = productMatchSlug(name, w, wu);
   const canonName = canonicalProductName(name, w, wu);
 
-  let product = await prisma.product.findUnique({ where: { slug: matchSlug } });
+  const catSlug = CATEGORY_MAP[category.toLowerCase() as keyof typeof CATEGORY_MAP];
+  const categoryId = catSlug ? catMap.get(catSlug) : undefined;
 
-  if (!product) {
-    const catSlug = CATEGORY_MAP[category.toLowerCase() as keyof typeof CATEGORY_MAP];
-    const categoryId = catSlug ? catMap.get(catSlug) : undefined;
-    product = await prisma.product.create({
-      data: {
-        name: canonName,
-        slug: matchSlug,
-        brand: extra?.brand || null,
-        imageUrl: extra?.imageUrl || null,
-        description: extra?.description || null,
-        weight: w || null,
-        weightUnit: wu || null,
-        categoryId: categoryId || null,
-        isActive: true,
-      },
-    });
-  } else {
-    const updates: Record<string, unknown> = {};
-    if (!product.imageUrl && extra?.imageUrl) updates.imageUrl = extra.imageUrl;
-    if (!product.brand && extra?.brand) updates.brand = extra.brand;
-    if (!product.description && extra?.description) updates.description = extra.description;
-    if (Object.keys(updates).length > 0) {
-      await prisma.product.update({ where: { id: product.id }, data: updates });
-    }
-  }
+  const product = await prisma.product.upsert({
+    where: { slug: matchSlug },
+    create: {
+      name: canonName,
+      slug: matchSlug,
+      brand: extra?.brand || null,
+      imageUrl: extra?.imageUrl || null,
+      description: extra?.description?.slice(0, 500) || null,
+      weight: w || null,
+      weightUnit: wu || null,
+      categoryId: categoryId || null,
+      isActive: true,
+    },
+    update: {
+      ...(extra?.imageUrl ? { imageUrl: extra.imageUrl } : {}),
+      ...(extra?.brand ? { brand: extra.brand } : {}),
+      ...(extra?.description ? { description: extra.description.slice(0, 500) } : {}),
+    },
+  });
 
   // Skip if already has a price from this store
   const existing = await prisma.price.findFirst({
@@ -95,301 +119,163 @@ async function upsertProduct(
   return true;
 }
 
-// ─── SuperValu (API) ────────────────────────────────────────────
+function parseMi9Product(
+  item: Mi9Product,
+  category: string
+): {
+  name: string;
+  price: number;
+  extra: Parameters<typeof upsertProduct>[4];
+} {
+  const tpr = typeof item.tprPrice === "number" ? item.tprPrice : null;
+  const isOnSale = tpr != null && tpr > 0 && tpr < item.priceNumeric;
+  const price = isOnSale && tpr ? tpr : item.priceNumeric;
 
-const SV_API = "https://storefrontgateway.supervalu.ie/api";
-const SV_STORE = "1733";
-const SV_CATS = [
-  { id: "O100001", cat: "fruits & vegetables" },
-  { id: "O100010", cat: "bakery" },
-  { id: "O100015", cat: "meat & poultry" },
-  { id: "O100023", cat: "dairy & eggs" },
-  { id: "O100025", cat: "dairy & eggs" },
-  { id: "O100030", cat: "dairy & eggs" },
-  { id: "O100045", cat: "frozen" },
-  { id: "O100050", cat: "drinks" },
-  { id: "O100035", cat: "snacks & sweets" },
-  { id: "O100065", cat: "household" },
-  { id: "O100055", cat: "personal care" },
-  { id: "O100060", cat: "baby" },
-];
-
-async function scrapeSuperValu() {
-  const store = await prisma.store.findUnique({ where: { slug: "supervalu" } });
-  if (!store) return 0;
-
-  let total = 0;
-  for (const sc of SV_CATS) {
-    let skip = 0;
-    const max = 150;
-    while (skip < max) {
-      const res = await fetch(
-        `${SV_API}/stores/${SV_STORE}/categories/${sc.id}/search?take=48&skip=${skip}`,
-        { headers: { "User-Agent": "Mozilla/5.0", Accept: "application/json" } }
-      );
-      const data = await res.json();
-      if (!data.items?.length) break;
-
-      for (const item of data.items) {
-        const price = typeof item.priceNumeric === "number" ? item.priceNumeric : 0;
-        let up: number | undefined;
-        let upu: string | undefined;
-        if (item.pricePerUnit) {
-          const m = item.pricePerUnit.match(/€([\d.]+)\/([\w]+)/);
-          if (m) { up = parseFloat(m[1]); upu = m[2]; }
-        }
-        const ok = await upsertProduct(store.id, item.name, price, sc.cat, {
-          imageUrl: item.image?.default,
-          brand: item.brand,
-          unitPrice: up,
-          unitPriceUnit: upu,
-          description: item.description?.slice(0, 500),
-          weight: item.unitOfSize?.size,
-          weightUnit: item.unitOfSize?.abbreviation,
-        });
-        if (ok) total++;
-      }
-
-      skip += data.items.length;
-      if (skip >= data.total) break;
-      await new Promise((r) => setTimeout(r, 150));
+  let unitPrice: number | undefined;
+  let unitPriceUnit: string | undefined;
+  if (item.pricePerUnit) {
+    const m = item.pricePerUnit.match(/€([\d.]+)\/([\w]+)/);
+    if (m) {
+      unitPrice = parseFloat(m[1]);
+      unitPriceUnit = m[2];
     }
-    process.stdout.write(".");
   }
-  console.log();
-  return total;
+
+  return {
+    name: item.name,
+    price,
+    extra: {
+      imageUrl: item.image?.default || item.image?.cell || undefined,
+      brand: item.brand || undefined,
+      unitPrice,
+      unitPriceUnit,
+      description: item.description || undefined,
+      weight: item.unitOfSize?.size || undefined,
+      weightUnit: item.unitOfSize?.abbreviation || undefined,
+    },
+  };
 }
 
-// ─── Dunnes (browser — dunnesstoresgrocery.com) ─────────────────
+// ─── Generic Mi9 store scraper ──────────────────────────────────
 
-const DUNNES_SEARCHES = [
-  { query: "milk", cat: "dairy & eggs" },
-  { query: "butter", cat: "dairy & eggs" },
-  { query: "cheese", cat: "dairy & eggs" },
-  { query: "eggs", cat: "dairy & eggs" },
-  { query: "yoghurt", cat: "dairy & eggs" },
-  { query: "cream", cat: "dairy & eggs" },
-  { query: "chicken", cat: "meat & poultry" },
-  { query: "beef", cat: "meat & poultry" },
-  { query: "pork", cat: "meat & poultry" },
-  { query: "bacon", cat: "meat & poultry" },
-  { query: "sausages", cat: "meat & poultry" },
-  { query: "ham", cat: "meat & poultry" },
-  { query: "salmon", cat: "meat & poultry" },
-  { query: "bananas", cat: "fruits & vegetables" },
-  { query: "apples", cat: "fruits & vegetables" },
-  { query: "potatoes", cat: "fruits & vegetables" },
-  { query: "carrots", cat: "fruits & vegetables" },
-  { query: "tomatoes", cat: "fruits & vegetables" },
-  { query: "onions", cat: "fruits & vegetables" },
-  { query: "broccoli", cat: "fruits & vegetables" },
-  { query: "mushrooms", cat: "fruits & vegetables" },
-  { query: "lettuce", cat: "fruits & vegetables" },
-  { query: "bread", cat: "bakery" },
-  { query: "rolls", cat: "bakery" },
-  { query: "wraps", cat: "bakery" },
-  { query: "water", cat: "drinks" },
-  { query: "juice", cat: "drinks" },
-  { query: "tea", cat: "drinks" },
-  { query: "coffee", cat: "drinks" },
-  { query: "cola", cat: "drinks" },
-  { query: "pizza", cat: "frozen" },
-  { query: "fish fingers", cat: "frozen" },
-  { query: "frozen chips", cat: "frozen" },
-  { query: "ice cream", cat: "frozen" },
-  { query: "chocolate", cat: "snacks & sweets" },
-  { query: "crisps", cat: "snacks & sweets" },
-  { query: "biscuits", cat: "snacks & sweets" },
-  { query: "toilet roll", cat: "household" },
-  { query: "washing up liquid", cat: "household" },
-  { query: "detergent", cat: "household" },
-  { query: "shampoo", cat: "personal care" },
-  { query: "toothpaste", cat: "personal care" },
-  { query: "nappies", cat: "baby" },
-];
+interface StoreConfig {
+  slug: string;
+  apiBase: string;
+  storeId: string;
+  categories: Array<{ id: string; name: string; mapped: string }>;
+  maxPerCategory: number;
+}
 
-async function scrapeDunnes(browser: Browser) {
-  const store = await prisma.store.findUnique({ where: { slug: "dunnes" } });
-  if (!store) return 0;
-
-  const context = await browser.newContext({ locale: "en-IE" });
-  const page = await context.newPage();
+async function scrapeStore(config: StoreConfig): Promise<number> {
+  const store = await prisma.store.findUnique({ where: { slug: config.slug } });
+  if (!store) {
+    console.log(`  Store '${config.slug}' not found in DB`);
+    return 0;
+  }
 
   let total = 0;
-  for (const s of DUNNES_SEARCHES) {
+  for (const cat of config.categories) {
     try {
-      const url = `https://www.dunnesstoresgrocery.com/sm/delivery/rsid/258/results?q=${encodeURIComponent(s.query)}`;
-      await page.goto(url, { waitUntil: "load", timeout: 30000 });
-      await page.waitForTimeout(6000);
+      let skip = 0;
+      let fetched = 0;
 
-      const products = await page.evaluate(() => {
-        const state = (window as any).__PRELOADED_STATE__;
-        if (!state?.search?.productCardDictionary) return [];
-        return Object.values(state.search.productCardDictionary).map((p: any) => ({
-          name: p.name,
-          price: p.price,
-          unitPrice: p.unitPrice,
-          brand: p.brand,
-          sku: p.sku,
-          sellBy: p.sellBy,
-          image: typeof p.image === "string" ? p.image : undefined,
-          unitOfSize: p.unitOfSize,
-        }));
-      });
+      while (fetched < config.maxPerCategory) {
+        const take = Math.min(48, config.maxPerCategory - fetched);
+        const data = await fetchMi9Page(config.apiBase, config.storeId, cat.id, take, skip);
+        if (!data.items?.length) break;
 
-      let added = 0;
-      for (const p of products) {
-        const priceStr = String(p.price).replace(/[€,]/g, "");
-        const price = parseFloat(priceStr);
-        if (!price || price <= 0) continue;
-
-        // Parse unit price like "€1.70/l"
-        let up: number | undefined;
-        let upu: string | undefined;
-        if (p.unitPrice) {
-          const m = String(p.unitPrice).match(/€?([\d.]+)\/([\w]+)/);
-          if (m) { up = parseFloat(m[1]); upu = m[2]; }
+        for (const item of data.items) {
+          if (item.priceNumeric <= 0) continue;
+          const parsed = parseMi9Product(item, cat.mapped);
+          try {
+            const ok = await upsertProduct(store.id, parsed.name, parsed.price, cat.mapped, parsed.extra);
+            if (ok) total++;
+          } catch {
+            // Skip individual product errors
+          }
         }
 
-        const ok = await upsertProduct(store.id, `Dunnes ${p.name}`, price, s.cat, {
-          brand: p.brand,
-          unitPrice: up,
-          unitPriceUnit: upu,
-        });
-        if (ok) added++;
+        fetched += data.items.length;
+        skip += data.items.length;
+        if (fetched >= data.total) break;
+        await new Promise((r) => setTimeout(r, 150));
       }
-      total += added;
-      process.stdout.write(added > 0 ? `${s.query}(${added}) ` : ".");
-    } catch {
+
+      process.stdout.write(".");
+    } catch (err) {
       process.stdout.write("x");
     }
-
-    await page.waitForTimeout(1500 + Math.random() * 1500);
   }
   console.log();
-  await context.close();
   return total;
 }
 
-// ─── Tesco (browser — first category only, Akamai blocks rest) ──
+// ─── Store configs ──────────────────────────────────────────────
 
-async function scrapeTesco(browser: Browser) {
-  const store = await prisma.store.findUnique({ where: { slug: "tesco" } });
-  if (!store) return 0;
+const SUPERVALU: StoreConfig = {
+  slug: "supervalu",
+  apiBase: "https://storefrontgateway.supervalu.ie/api",
+  storeId: "1733", // Ranelagh, Dublin
+  maxPerCategory: 200,
+  categories: [
+    { id: "O100001", name: "Fruit & Vegetables", mapped: "fruits & vegetables" },
+    { id: "O100010", name: "Bakery", mapped: "bakery" },
+    { id: "O100015", name: "Meat & Poultry", mapped: "meat & poultry" },
+    { id: "O100023", name: "Cheese", mapped: "dairy & eggs" },
+    { id: "O100025", name: "Milk, Butter & Eggs", mapped: "dairy & eggs" },
+    { id: "O100030", name: "Chilled Food", mapped: "dairy & eggs" },
+    { id: "O100045", name: "Frozen Foods", mapped: "frozen" },
+    { id: "O100050", name: "Drinks", mapped: "drinks" },
+    { id: "O100035", name: "Food Cupboard", mapped: "snacks & sweets" },
+    { id: "O100065", name: "Household & Cleaning", mapped: "household" },
+    { id: "O100055", name: "Beauty & Personal Care", mapped: "personal care" },
+    { id: "O100060", name: "Baby", mapped: "baby" },
+  ],
+};
 
-  const context = await browser.newContext({ locale: "en-IE" });
-  const page = await context.newPage();
-
-  // Go to homepage first
-  await page.goto("https://www.tesco.ie/", { waitUntil: "load", timeout: 30000 });
-  await page.waitForTimeout(3000);
-
-  // Accept cookies
-  try {
-    await page.locator('button:has-text("Accept")').first().click({ timeout: 3000 });
-    await page.waitForTimeout(1000);
-  } catch {}
-
-  const tescoCategories = [
-    { url: "https://www.tesco.ie/groceries/en-IE/shop/fresh-food/milk-butter-and-eggs/all", cat: "dairy & eggs" },
-    { url: "https://www.tesco.ie/groceries/en-IE/shop/fresh-food/cheese/all", cat: "dairy & eggs" },
-    { url: "https://www.tesco.ie/groceries/en-IE/shop/fresh-food/fresh-meat-and-poultry/all", cat: "meat & poultry" },
-    { url: "https://www.tesco.ie/groceries/en-IE/shop/fresh-food/fresh-fruit/all", cat: "fruits & vegetables" },
-    { url: "https://www.tesco.ie/groceries/en-IE/shop/fresh-food/fresh-vegetables/all", cat: "fruits & vegetables" },
-    { url: "https://www.tesco.ie/groceries/en-IE/shop/bakery/all", cat: "bakery" },
-    { url: "https://www.tesco.ie/groceries/en-IE/shop/frozen-food/all", cat: "frozen" },
-    { url: "https://www.tesco.ie/groceries/en-IE/shop/drinks/all", cat: "drinks" },
-  ];
-
-  let total = 0;
-  for (const tc of tescoCategories) {
-    try {
-      await page.goto(tc.url, { waitUntil: "load", timeout: 45000 });
-      await page.waitForTimeout(8000);
-
-      const body = await page.textContent("body");
-      if (body?.includes("Access Denied")) {
-        process.stdout.write("B");
-        continue;
-      }
-
-      // Scroll to load
-      for (let i = 0; i < 4; i++) {
-        await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-        await page.waitForTimeout(1500);
-      }
-
-      const products = await page.evaluate(() => {
-        const results: Array<{ name: string; price: string }> = [];
-        const seen = new Set<string>();
-        document.querySelectorAll('a[href*="/products/"]').forEach((link) => {
-          const name = link.textContent?.trim() || "";
-          if (!name || name.length < 3 || seen.has(name)) return;
-          seen.add(name);
-          const container = link.closest("li") || link.closest("div");
-          const priceEl = container?.querySelector('[class*="price"]');
-          const price = priceEl?.textContent?.trim() || "";
-          if (price) results.push({ name, price });
-        });
-        return results;
-      });
-
-      let added = 0;
-      for (const p of products) {
-        const m = p.price.match(/€?([\d.]+)/);
-        if (!m) continue;
-        const ok = await upsertProduct(store.id, `Tesco ${p.name}`, parseFloat(m[1]), tc.cat);
-        if (ok) added++;
-      }
-      total += added;
-      process.stdout.write(added > 0 ? `+${added} ` : ".");
-    } catch {
-      process.stdout.write("x");
-    }
-    await page.waitForTimeout(3000 + Math.random() * 2000);
-  }
-  console.log();
-  await context.close();
-  return total;
-}
+const DUNNES: StoreConfig = {
+  slug: "dunnes",
+  apiBase: "https://storefrontgateway.dunnesstoresgrocery.com/api",
+  storeId: "258", // Beacon Court, Dublin 18
+  maxPerCategory: 200,
+  categories: [
+    { id: "50066", name: "Fresh Fruit", mapped: "fruits & vegetables" },
+    { id: "47183", name: "Fresh Vegetables", mapped: "fruits & vegetables" },
+    { id: "47181", name: "Fresh Meat & Poultry", mapped: "meat & poultry" },
+    { id: "50101", name: "Chilled Fish & Seafood", mapped: "meat & poultry" },
+    { id: "47173", name: "Chilled Food", mapped: "dairy & eggs" },
+    { id: "47171", name: "Bakery", mapped: "bakery" },
+    { id: "47177", name: "Food Cupboard", mapped: "snacks & sweets" },
+    { id: "47185", name: "Frozen Food", mapped: "frozen" },
+    { id: "47175", name: "Drinks", mapped: "drinks" },
+    { id: "47189", name: "Household & Cleaning", mapped: "household" },
+    { id: "47201", name: "Toiletries", mapped: "personal care" },
+    { id: "47169", name: "Baby", mapped: "baby" },
+  ],
+};
 
 // ─── Main ───────────────────────────────────────────────────────
 
 async function main() {
   const arg = process.argv[2]?.toLowerCase();
-  console.log("=== GrocerySaver Automated Scraper ===\n");
+  console.log("=== GrocerySaver Scraper (API only, no browser) ===\n");
 
   const categories = await prisma.category.findMany();
   catMap = new Map(categories.map((c: any) => [c.slug, c.id]));
 
   if (!arg || arg === "supervalu") {
-    process.stdout.write("SuperValu (API): ");
-    const n = await scrapeSuperValu();
+    process.stdout.write("SuperValu: ");
+    const n = await scrapeStore(SUPERVALU);
     console.log(`  → ${n} new prices`);
   }
 
-  let browser: Browser | null = null;
-  try {
-    if (!arg || arg === "dunnes" || arg === "tesco") {
-      browser = await chromium.launch({ headless: false, channel: "chrome" });
-    }
-
-    if ((!arg || arg === "dunnes") && browser) {
-      process.stdout.write("Dunnes (browser): ");
-      const n = await scrapeDunnes(browser);
-      console.log(`  → ${n} new prices`);
-    }
-
-    if ((!arg || arg === "tesco") && browser) {
-      process.stdout.write("Tesco (browser): ");
-      const n = await scrapeTesco(browser);
-      console.log(`  → ${n} new prices`);
-    }
-  } finally {
-    if (browser) await browser.close();
+  if (!arg || arg === "dunnes") {
+    process.stdout.write("Dunnes: ");
+    const n = await scrapeStore(DUNNES);
+    console.log(`  → ${n} new prices`);
   }
 
-  // Stats
+  // Final stats
   console.log("\n=== Results ===");
   const stores = await prisma.store.findMany({ select: { name: true, id: true } });
   for (const s of stores) {
@@ -402,7 +288,7 @@ async function main() {
     `SELECT COUNT(*) as count FROM (SELECT "productId" FROM "Price" WHERE "isLatest" = true GROUP BY "productId" HAVING COUNT(DISTINCT "storeId") >= 2) sub`
   );
   console.log(`  Total: ${tp} products, ${tpr} prices`);
-  console.log(`  Cross-store products: ${multi[0]?.count ?? 0}`);
+  console.log(`  Cross-store matches: ${multi[0]?.count ?? 0}`);
 
   await prisma.$disconnect();
 }
