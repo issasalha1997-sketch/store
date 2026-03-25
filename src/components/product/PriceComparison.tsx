@@ -33,7 +33,7 @@ export function PriceComparison({ prices }: { prices: PriceEntry[] }) {
             <div
               key={entry.store.slug}
               className={`flex items-center gap-3 rounded-lg border p-3 transition-colors ${
-                isCheapest ? "border-green-200 bg-green-50" : ""
+                isCheapest ? "border-teal-200 bg-teal-50" : ""
               }`}
             >
               <StoreLogo slug={entry.store.slug} name={entry.store.name} size="md" />
@@ -57,7 +57,7 @@ export function PriceComparison({ prices }: { prices: PriceEntry[] }) {
                 <div className="mt-1.5 h-2 w-full rounded-full bg-muted overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all ${
-                      isCheapest ? "bg-green-500" : "bg-muted-foreground/30"
+                      isCheapest ? "bg-teal-500" : "bg-muted-foreground/30"
                     }`}
                     style={{ width: `${barWidth}%` }}
                   />
@@ -71,7 +71,7 @@ export function PriceComparison({ prices }: { prices: PriceEntry[] }) {
               </div>
 
               <div className="text-right">
-                <span className={`text-lg font-bold ${isCheapest ? "text-green-600" : ""}`}>
+                <span className={`text-lg font-bold ${isCheapest ? "text-teal-600" : ""}`}>
                   {formatPrice(entry.price)}
                 </span>
                 {entry.isOnSale && entry.originalPrice && (
@@ -87,7 +87,7 @@ export function PriceComparison({ prices }: { prices: PriceEntry[] }) {
 
       {range > 0 && (
         <p className="text-sm text-muted-foreground text-center">
-          You save <span className="font-semibold text-green-600">{formatPrice(range)}</span> by
+          You save <span className="font-semibold text-teal-600">{formatPrice(range)}</span> by
           buying from {sorted[0].store.name} instead of {sorted[sorted.length - 1].store.name}
         </p>
       )}

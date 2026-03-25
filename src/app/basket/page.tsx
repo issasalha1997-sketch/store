@@ -201,7 +201,7 @@ export default function BasketPage() {
           your shopping trip
         </p>
         <Link href="/search">
-          <Button className="mt-6 rounded-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 px-8 shadow-md shadow-green-500/20">
+          <Button className="mt-6 rounded-full bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 px-8 shadow-md shadow-teal-500/20">
             Start Shopping
           </Button>
         </Link>
@@ -259,7 +259,7 @@ export default function BasketPage() {
           {optimizing ? (
             <Card className="border-0 shadow-sm">
               <CardContent className="p-6 text-center">
-                <div className="animate-spin h-8 w-8 border-2 border-green-500 border-t-transparent rounded-full mx-auto" />
+                <div className="animate-spin h-8 w-8 border-2 border-teal-500 border-t-transparent rounded-full mx-auto" />
                 <p className="mt-3 text-sm text-muted-foreground">
                   Finding the best prices...
                 </p>
@@ -302,16 +302,16 @@ export default function BasketPage() {
                 </Card>
 
                 {/* Smart Split */}
-                <Card className="border-0 shadow-sm min-w-[240px] xl:min-w-0 snap-start shrink-0 xl:shrink bg-gradient-to-br from-green-50 to-emerald-50 relative overflow-hidden">
-                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-green-400 to-emerald-500" />
+                <Card className="border-0 shadow-sm min-w-[240px] xl:min-w-0 snap-start shrink-0 xl:shrink bg-gradient-to-br from-teal-50 to-emerald-50 relative overflow-hidden">
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-400 to-emerald-500" />
                   <CardContent className="p-4">
                     <div className="flex items-center gap-2 mb-2">
-                      <Sparkles className="h-4 w-4 text-green-600" />
-                      <span className="text-xs font-semibold uppercase tracking-wide text-green-700">
+                      <Sparkles className="h-4 w-4 text-teal-600" />
+                      <span className="text-xs font-semibold uppercase tracking-wide text-teal-700">
                         Smart Split
                       </span>
                     </div>
-                    <p className="text-3xl font-bold text-green-600 tabular-nums">
+                    <p className="text-3xl font-bold text-teal-600 tabular-nums">
                       {formatPrice(optimization.multiStoreBest.total)}
                     </p>
                     {optimization.savings > 0 && (
@@ -390,7 +390,7 @@ export default function BasketPage() {
               {/* Plan Trip CTA */}
               <Link href="/trip" className="block">
                 <Button
-                  className="w-full rounded-xl bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-md shadow-green-500/20"
+                  className="w-full rounded-xl bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 shadow-md shadow-teal-500/20"
                   size="lg"
                 >
                   <MapPin className="mr-2 h-5 w-5" />
@@ -407,7 +407,7 @@ export default function BasketPage() {
           {optimizing ? (
             <Card className="border-0 shadow-sm">
               <CardContent className="p-12 text-center">
-                <div className="animate-spin h-10 w-10 border-2 border-green-500 border-t-transparent rounded-full mx-auto" />
+                <div className="animate-spin h-10 w-10 border-2 border-teal-500 border-t-transparent rounded-full mx-auto" />
                 <p className="mt-4 text-muted-foreground">
                   Comparing prices across all stores...
                 </p>
@@ -493,7 +493,7 @@ export default function BasketPage() {
                               <td className="p-3">
                                 <Link
                                   href={`/product/${basketItem.productSlug}`}
-                                  className="hover:text-green-600 transition-colors"
+                                  className="hover:text-teal-600 transition-colors"
                                 >
                                   <p className="font-medium text-sm leading-tight">
                                     {itemData.productName}
@@ -575,7 +575,7 @@ export default function BasketPage() {
                                           isSelected
                                             ? "font-bold shadow-sm"
                                             : isCheapest
-                                              ? "bg-green-50/60 text-green-700 hover:bg-green-50"
+                                              ? "bg-teal-50/60 text-teal-700 hover:bg-teal-50"
                                               : isMostExpensive
                                                 ? "text-red-400 hover:bg-red-50/50"
                                                 : "text-foreground hover:bg-accent"
@@ -594,10 +594,10 @@ export default function BasketPage() {
                                       >
                                         {formatPrice(storePrice.price)}
                                         {isSelected && (
-                                          <Check className="absolute -top-1 -right-1 h-4 w-4 text-white rounded-full p-0.5 bg-green-500" />
+                                          <Check className="absolute -top-1 -right-1 h-4 w-4 text-white rounded-full p-0.5 bg-teal-500" />
                                         )}
                                         {isCheapest && !isSelected && (
-                                          <span className="block text-[9px] text-green-600 font-normal">
+                                          <span className="block text-[9px] text-teal-600 font-normal">
                                             cheapest
                                           </span>
                                         )}
@@ -674,7 +674,7 @@ export default function BasketPage() {
                               </td>
                             );
                           })}
-                          <td className="p-3 text-center text-base text-green-600 tabular-nums">
+                          <td className="p-3 text-center text-base text-teal-600 tabular-nums">
                             {formatPrice(customTotal)}
                           </td>
                           <td />
@@ -731,7 +731,7 @@ export default function BasketPage() {
                               <div className="flex-1 min-w-0">
                                 <Link
                                   href={`/product/${basketItem.productSlug}`}
-                                  className="font-semibold text-sm hover:text-green-600 transition-colors leading-tight line-clamp-1"
+                                  className="font-semibold text-sm hover:text-teal-600 transition-colors leading-tight line-clamp-1"
                                 >
                                   {itemData.productName}
                                 </Link>
@@ -818,7 +818,7 @@ export default function BasketPage() {
                                       isSelected
                                         ? "shadow-sm"
                                         : isCheapest
-                                          ? "bg-green-50/60"
+                                          ? "bg-teal-50/60"
                                           : "bg-muted/30"
                                     } ${!storePrice ? "opacity-40" : "active:scale-95"}`}
                                     style={
@@ -843,12 +843,12 @@ export default function BasketPage() {
                                         : "N/A"}
                                     </p>
                                     {isCheapest && storePrice && (
-                                      <p className="text-[8px] text-green-600 font-medium">
+                                      <p className="text-[8px] text-teal-600 font-medium">
                                         best
                                       </p>
                                     )}
                                     {isSelected && (
-                                      <Check className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 text-white rounded-full p-0.5 bg-green-500" />
+                                      <Check className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 text-white rounded-full p-0.5 bg-teal-500" />
                                     )}
                                   </button>
                                 );
@@ -885,7 +885,7 @@ export default function BasketPage() {
                 <Card className="border-0 shadow-sm bg-muted/30">
                   <CardContent className="p-4 flex items-center justify-between">
                     <span className="font-bold">Your Total</span>
-                    <span className="text-xl font-bold text-green-600 tabular-nums">
+                    <span className="text-xl font-bold text-teal-600 tabular-nums">
                       {formatPrice(customTotal)}
                     </span>
                   </CardContent>
@@ -906,7 +906,7 @@ export default function BasketPage() {
                             <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">
                               Algorithm
                             </p>
-                            <p className="text-lg font-bold text-green-600 tabular-nums">
+                            <p className="text-lg font-bold text-teal-600 tabular-nums">
                               {formatPrice(
                                 optimization.multiStoreBest.total
                               )}

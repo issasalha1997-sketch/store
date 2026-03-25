@@ -11,7 +11,7 @@ export default function LoginPage() {
     <div className="container mx-auto flex min-h-[60vh] items-center justify-center px-4 py-8">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-green-600 text-white font-bold text-xl">
+          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-teal-600 text-white font-bold text-xl">
             G
           </div>
           <CardTitle className="text-2xl">Welcome back</CardTitle>
@@ -51,14 +51,14 @@ export default function LoginPage() {
           <form className="space-y-3">
             <Input type="email" placeholder="Email address" />
             <Input type="password" placeholder="Password" />
-            <Button className="w-full bg-green-600 hover:bg-green-700" disabled>
+            <Button className="w-full bg-teal-600 hover:bg-teal-700" disabled>
               Sign In
             </Button>
           </form>
 
           <p className="text-center text-sm text-muted-foreground">
             Don&apos;t have an account?{" "}
-            <Link href="/register" className="text-green-600 hover:underline">
+            <Link href="/register" className="text-teal-600 hover:underline">
               Sign up
             </Link>
           </p>

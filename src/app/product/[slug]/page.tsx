@@ -179,7 +179,7 @@ export default function ProductDetailPage() {
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
                   Cheapest
                 </p>
-                <p className="text-lg font-bold text-green-600 tabular-nums">
+                <p className="text-lg font-bold text-teal-600 tabular-nums">
                   {formatPrice(minPrice)}
                 </p>
               </CardContent>
@@ -194,12 +194,12 @@ export default function ProductDetailPage() {
                 </p>
               </CardContent>
             </Card>
-            <Card className="border-0 shadow-sm bg-green-50">
+            <Card className="border-0 shadow-sm bg-teal-50">
               <CardContent className="p-3 text-center">
-                <p className="text-[10px] uppercase tracking-wide text-green-600 font-medium">
+                <p className="text-[10px] uppercase tracking-wide text-teal-600 font-medium">
                   You Save
                 </p>
-                <p className="text-lg font-bold text-green-600 tabular-nums">
+                <p className="text-lg font-bold text-teal-600 tabular-nums">
                   {formatPrice(savings)}
                 </p>
               </CardContent>
@@ -283,7 +283,7 @@ export default function ProductDetailPage() {
                 >
                   <Button
                     size="lg"
-                    className="w-full bg-green-50 text-green-600 hover:bg-green-100 border-2 border-green-200 rounded-xl"
+                    className="w-full bg-teal-50 text-teal-600 hover:bg-teal-100 border-2 border-teal-200 rounded-xl"
                     disabled
                   >
                     <Check className="mr-2 h-5 w-5" />
@@ -300,7 +300,7 @@ export default function ProductDetailPage() {
                 >
                   <Button
                     size="lg"
-                    className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-xl shadow-md shadow-green-500/20"
+                    className="w-full bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 rounded-xl shadow-md shadow-teal-500/20"
                     onClick={handleAddToBasket}
                   >
                     <ShoppingCart className="mr-2 h-5 w-5" />

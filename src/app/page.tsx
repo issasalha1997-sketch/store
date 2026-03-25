@@ -40,9 +40,9 @@ export default function HomePage() {
       {/* Hero Section */}
       <section className="relative overflow-hidden py-20 lg:py-32">
         {/* Animated background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-green-50 via-emerald-50/80 to-amber-50/30" />
+        <div className="absolute inset-0 bg-gradient-to-br from-teal-50 via-emerald-50/80 to-amber-50/30" />
         <div className="absolute inset-0">
-          <div className="absolute top-20 left-[10%] h-72 w-72 rounded-full bg-green-200/40 blur-3xl animate-float-slow" />
+          <div className="absolute top-20 left-[10%] h-72 w-72 rounded-full bg-teal-200/40 blur-3xl animate-float-slow" />
           <div className="absolute bottom-10 right-[15%] h-64 w-64 rounded-full bg-emerald-200/30 blur-3xl animate-float" />
           <div className="absolute top-40 right-[30%] h-48 w-48 rounded-full bg-amber-100/40 blur-3xl animate-float-slow" style={{ animationDelay: "2s" }} />
         </div>
@@ -81,7 +81,7 @@ export default function HomePage() {
             variants={staggerContainer}
           >
             <motion.div variants={staggerItem}>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100/80 px-4 py-1.5 text-sm font-medium text-green-700 mb-6 border border-green-200/50">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-100/80 px-4 py-1.5 text-sm font-medium text-teal-700 mb-6 border border-teal-200/50">
                 <Sparkles className="h-3.5 w-3.5" />
                 Compare 5 supermarkets instantly
               </span>
@@ -121,7 +121,7 @@ export default function HomePage() {
                 <Link
                   key={term}
                   href={`/search?q=${term}`}
-                  className="rounded-full border bg-white/60 px-3.5 py-1.5 hover:bg-white hover:border-green-300 hover:text-green-700 transition-all hover:shadow-sm"
+                  className="rounded-full border bg-white/60 px-3.5 py-1.5 hover:bg-white hover:border-teal-300 hover:text-teal-700 transition-all hover:shadow-sm"
                 >
                   {term}
                 </Link>
@@ -181,7 +181,7 @@ export default function HomePage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <span className="text-xs font-semibold uppercase tracking-widest text-green-600">
+            <span className="text-xs font-semibold uppercase tracking-widest text-teal-600">
               Simple as 1-2-3
             </span>
             <h2 className="mt-2 text-3xl font-bold lg:text-4xl">
@@ -211,8 +211,8 @@ export default function HomePage() {
                 title: "Build Your Basket",
                 description:
                   "Add items to your basket. We calculate the cheapest way to buy everything — even split across multiple stores.",
-                gradient: "from-green-500 to-emerald-500",
-                bg: "bg-green-50",
+                gradient: "from-teal-500 to-emerald-500",
+                bg: "bg-teal-50",
                 step: "02",
               },
               {
@@ -292,7 +292,7 @@ export default function HomePage() {
                       >
                         {category.icon}
                       </motion.span>
-                      <span className="mt-2 text-sm font-medium group-hover:text-green-600 transition-colors">
+                      <span className="mt-2 text-sm font-medium group-hover:text-teal-600 transition-colors">
                         {category.name}
                       </span>
                     </CardContent>
@@ -313,7 +313,7 @@ export default function HomePage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <span className="text-xs font-semibold uppercase tracking-widest text-green-600">
+            <span className="text-xs font-semibold uppercase tracking-widest text-teal-600">
               Why choose us
             </span>
             <h2 className="mt-2 text-3xl font-bold lg:text-4xl">
@@ -342,8 +342,8 @@ export default function HomePage() {
                 title: "Smart Savings",
                 description:
                   "Our optimizer calculates the best way to split your shop across stores for maximum savings.",
-                color: "text-green-500",
-                bg: "bg-green-50",
+                color: "text-teal-500",
+                bg: "bg-teal-50",
               },
               {
                 icon: MapPin,
@@ -384,7 +384,7 @@ export default function HomePage() {
 
       {/* CTA */}
       <section className="relative overflow-hidden py-16 lg:py-20">
-        <div className="absolute inset-0 bg-gradient-to-br from-green-600 via-green-700 to-emerald-800" />
+        <div className="absolute inset-0 bg-gradient-to-br from-teal-600 via-teal-700 to-emerald-800" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.1),transparent_60%)]" />
 
         <motion.div
@@ -396,7 +396,7 @@ export default function HomePage() {
           <h2 className="text-3xl font-bold text-white lg:text-4xl">
             Start Saving on Your Groceries Today
           </h2>
-          <p className="mt-3 text-green-100/80 max-w-md mx-auto">
+          <p className="mt-3 text-teal-100/80 max-w-md mx-auto">
             No sign-up required. Search, compare, and save in seconds.
             Free for all Dublin shoppers.
           </p>
@@ -404,7 +404,7 @@ export default function HomePage() {
             <Link href="/search">
               <Button
                 size="lg"
-                className="rounded-full bg-white text-green-700 hover:bg-green-50 font-semibold shadow-lg shadow-green-900/20 px-8"
+                className="rounded-full bg-white text-teal-700 hover:bg-teal-50 font-semibold shadow-lg shadow-teal-900/20 px-8"
               >
                 <Search className="mr-2 h-4 w-4" />
                 Start Searching

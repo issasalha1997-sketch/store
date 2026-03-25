@@ -22,7 +22,7 @@ export default function ProfilePage() {
           </p>
           <div className="mt-6 flex justify-center gap-3">
             <Link href="/login">
-              <Button className="bg-green-600 hover:bg-green-700">Sign In</Button>
+              <Button className="bg-teal-600 hover:bg-teal-700">Sign In</Button>
             </Link>
             <Link href="/register">
               <Button variant="outline">Create Account</Button>

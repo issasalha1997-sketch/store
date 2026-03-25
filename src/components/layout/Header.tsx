@@ -52,9 +52,9 @@ export function Header() {
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-green-500 to-green-700 text-white font-bold text-lg shadow-md shadow-green-500/20 group-hover:shadow-green-500/40 transition-shadow">
-            G
-            <div className="absolute inset-0 rounded-xl bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-teal-700 text-white font-bold text-lg shadow-md shadow-teal-500/20 group-hover:shadow-teal-500/40 transition-shadow">
+            <ShoppingCart className="h-5 w-5" />
+            <div className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-orange-400 border-2 border-white" />
           </div>
           <span className="text-xl font-bold tracking-tight hidden sm:inline">
             Grocery<span className="text-gradient">Saver</span>
@@ -71,7 +71,7 @@ export function Header() {
                 href={link.href}
                 className={`relative flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors ${
                   isActive
-                    ? "text-green-700 bg-green-50"
+                    ? "text-teal-700 bg-teal-50"
                     : "text-muted-foreground hover:text-foreground hover:bg-accent"
                 }`}
               >
@@ -80,7 +80,7 @@ export function Header() {
                 {isActive && (
                   <motion.div
                     layoutId="nav-indicator"
-                    className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-green-600"
+                    className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-teal-600"
                     transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
                   />
                 )}
@@ -106,7 +106,7 @@ export function Header() {
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0, opacity: 0 }}
                     transition={{ type: "spring", bounce: 0.5, duration: 0.4 }}
-                    className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-r from-green-500 to-green-600 text-[11px] font-bold text-white shadow-sm"
+                    className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-r from-teal-500 to-teal-600 text-[11px] font-bold text-white shadow-sm"
                   >
                     {itemCount > 99 ? "99+" : itemCount}
                   </motion.span>
@@ -179,7 +179,7 @@ export function Header() {
                       href={link.href}
                       className={`flex items-center justify-between rounded-xl px-4 py-3 text-sm font-medium transition-colors ${
                         isActive
-                          ? "bg-green-50 text-green-700"
+                          ? "bg-teal-50 text-teal-700"
                           : "hover:bg-accent"
                       }`}
                     >

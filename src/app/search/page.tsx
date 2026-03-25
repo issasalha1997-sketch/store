@@ -71,7 +71,7 @@ function SearchContent() {
             <SlidersHorizontal className="mr-1.5 h-4 w-4" />
             Filters
             {categoryParam && (
-              <span className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-green-100 text-[10px] font-bold text-green-700">
+              <span className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-teal-100 text-[10px] font-bold text-teal-700">
                 1
               </span>
             )}
@@ -141,7 +141,7 @@ function SearchContent() {
                 href="/search"
                 className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors ${
                   !categoryParam
-                    ? "bg-green-50 text-green-700 font-medium"
+                    ? "bg-teal-50 text-teal-700 font-medium"
                     : "hover:bg-accent"
                 }`}
                 onClick={() => setShowFilters(false)}
@@ -154,7 +154,7 @@ function SearchContent() {
                   href={`/search?${q ? `q=${q}&` : ""}category=${cat.slug}`}
                   className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors ${
                     categoryParam === cat.slug
-                      ? "bg-green-50 text-green-700 font-medium"
+                      ? "bg-teal-50 text-teal-700 font-medium"
                       : "hover:bg-accent"
                   }`}
                   onClick={() => setShowFilters(false)}
@@ -268,7 +268,7 @@ function SearchContent() {
                             onClick={() => setPage(pageNum)}
                             className={`h-8 w-8 rounded-lg text-sm font-medium transition-colors ${
                               page === pageNum
-                                ? "bg-green-600 text-white"
+                                ? "bg-teal-600 text-white"
                                 : "hover:bg-accent"
                             }`}
                           >

@@ -21,7 +21,7 @@ export default function CategoriesPage() {
             <Card className="group h-full cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1">
               <CardContent className="flex flex-col items-center justify-center p-8 text-center">
                 <span className="text-5xl">{category.icon}</span>
-                <span className="mt-3 text-base font-semibold group-hover:text-green-600 transition-colors">
+                <span className="mt-3 text-base font-semibold group-hover:text-teal-600 transition-colors">
                   {category.name}
                 </span>
               </CardContent>

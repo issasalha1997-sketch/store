@@ -2,14 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import {
   scrapeStore,
-  slugify,
-  normalizeProductName,
   CATEGORY_MAP,
   type ScrapedProduct,
 } from "@/lib/scraper/products";
+import {
+  canonicalProductName,
+  productMatchSlug,
+} from "@/lib/scraper/matcher";
 
-// Allow up to 60 seconds on Vercel
-export const maxDuration = 60;
+// Allow up to 300 seconds on Vercel (Pro plan) or 60s (Hobby)
+export const maxDuration = 300;
 
 /**
  * GET /api/admin/scrape
@@ -262,21 +264,37 @@ async function findOrCreateProduct(
   scraped: ScrapedProduct,
   categoryBySlug: Map<string, string>
 ): Promise<string> {
-  // Use normalized name for slug so cross-store products match
-  const canonical = normalizeProductName(scraped.name);
-  const productSlug = slugify(canonical);
+  // Use the smart matcher for cross-store product matching
+  const canonical = canonicalProductName(
+    scraped.name,
+    scraped.weight,
+    scraped.weightUnit
+  );
+  const matchSlug = productMatchSlug(
+    scraped.name,
+    scraped.weight,
+    scraped.weightUnit
+  );
 
   // Try to find existing product by slug
   const existing = await prisma.product.findUnique({
-    where: { slug: productSlug },
+    where: { slug: matchSlug },
   });
 
   if (existing) {
-    // Update imageUrl if the existing product doesn't have one
-    if (!existing.imageUrl && scraped.imageUrl) {
+    // Update fields if the existing product is missing data
+    const updates: Record<string, unknown> = {};
+    if (!existing.imageUrl && scraped.imageUrl) updates.imageUrl = scraped.imageUrl;
+    if (!existing.description && scraped.description) updates.description = scraped.description;
+    if (!existing.weight && scraped.weight) {
+      updates.weight = scraped.weight;
+      updates.weightUnit = scraped.weightUnit;
+    }
+
+    if (Object.keys(updates).length > 0) {
       await prisma.product.update({
         where: { id: existing.id },
-        data: { imageUrl: scraped.imageUrl },
+        data: updates,
       });
     }
     return existing.id;
@@ -291,11 +309,11 @@ async function findOrCreateProduct(
     }
   }
 
-  // Create new product — use the canonical name for display, keep original context
+  // Create new product — use the canonical name for display
   const product = await prisma.product.create({
     data: {
       name: canonical,
-      slug: productSlug,
+      slug: matchSlug,
       brand: scraped.brand ?? null,
       weight: scraped.weight ?? null,
       weightUnit: scraped.weightUnit ?? null,

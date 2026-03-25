@@ -40,17 +40,28 @@ export default function TripPage() {
   const { items } = useBasket();
   const [transportMode, setTransportMode] = useState<TransportMode>("driving");
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [searchRadius, setSearchRadius] = useState(5); // km
+  const [locationStatus, setLocationStatus] = useState<"loading" | "granted" | "denied" | "unavailable">("loading");
 
-  // Default to Dublin city center
+  // Get user's real location
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => setUserLocation({ lat: 53.3498, lng: -6.2603 })
-      );
-    } else {
+    if (!navigator.geolocation) {
+      setLocationStatus("unavailable");
       setUserLocation({ lat: 53.3498, lng: -6.2603 });
+      return;
     }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setLocationStatus("granted");
+      },
+      () => {
+        setLocationStatus("denied");
+        setUserLocation({ lat: 53.3498, lng: -6.2603 });
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
   }, []);
 
   // Get optimization results
@@ -71,13 +82,13 @@ export default function TripPage() {
     enabled: items.length > 0,
   });
 
-  // Get store locations
+  // Get store locations with configurable radius
   const { data: locations } = useQuery({
-    queryKey: ["store-locations", userLocation],
+    queryKey: ["store-locations", userLocation, searchRadius],
     queryFn: async () => {
       if (!userLocation) return [];
       const res = await fetch(
-        `/api/stores/locations?lat=${userLocation.lat}&lng=${userLocation.lng}&radius=10`
+        `/api/stores/locations?lat=${userLocation.lat}&lng=${userLocation.lng}&radius=${searchRadius}`
       );
       return res.json();
     },
@@ -93,7 +104,7 @@ export default function TripPage() {
           Add items to your basket first, then come back to plan your route
         </p>
         <Link href="/search">
-          <Button className="mt-6 bg-green-600 hover:bg-green-700">
+          <Button className="mt-6 bg-teal-600 hover:bg-teal-700">
             <ShoppingCart className="mr-2 h-4 w-4" />
             Start Shopping
           </Button>
@@ -208,20 +219,51 @@ export default function TripPage() {
       <div className="grid gap-8 lg:grid-cols-3">
         {/* Left - Map and Route */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Location status */}
+          {locationStatus === "denied" && (
+            <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
+              <AlertTriangle className="inline h-4 w-4 mr-1" />
+              Location access denied — showing stores near Dublin city center. Enable location in your browser for accurate results.
+            </div>
+          )}
+
           {/* Transport mode toggle */}
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {transportModes.map(({ mode, icon: Icon, label }) => (
               <Button
                 key={mode}
                 variant={transportMode === mode ? "default" : "outline"}
                 size="sm"
                 onClick={() => setTransportMode(mode)}
-                className={transportMode === mode ? "bg-green-600 hover:bg-green-700" : ""}
+                className={transportMode === mode ? "bg-teal-600 hover:bg-teal-700" : ""}
               >
                 <Icon className="mr-1.5 h-4 w-4" />
                 {label}
               </Button>
             ))}
+          </div>
+
+          {/* Search radius selector */}
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground whitespace-nowrap">Search radius:</span>
+            <div className="flex gap-1.5">
+              {[1, 2, 3, 5, 10, 15].map((r) => (
+                <Button
+                  key={r}
+                  variant={searchRadius === r ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSearchRadius(r)}
+                  className={searchRadius === r ? "bg-teal-600 hover:bg-teal-700" : ""}
+                >
+                  {r} km
+                </Button>
+              ))}
+            </div>
+            {locations?.data && (
+              <span className="text-xs text-muted-foreground">
+                {locations.data.length} stores found
+              </span>
+            )}
           </div>
 
           {/* Map */}
@@ -286,7 +328,7 @@ export default function TripPage() {
                   <div key={sl.storeGroup.store.id}>
                     <div className="ml-4 border-l-2 border-dashed border-muted-foreground/20 h-6" />
                     <div className="flex items-start gap-3">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-600 text-sm font-bold">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-teal-100 text-teal-600 text-sm font-bold">
                         {index + 1}
                       </div>
                       <div className="flex-1">
@@ -305,7 +347,7 @@ export default function TripPage() {
                               </p>
                             )}
                           </div>
-                          <span className="ml-auto text-sm text-green-600 font-semibold">
+                          <span className="ml-auto text-sm text-teal-600 font-semibold">
                             {formatPrice(sl.storeGroup.subtotal)}
                           </span>
                         </div>
@@ -344,7 +386,7 @@ export default function TripPage() {
           <Card
             className={
               verdict === "WORTH_IT"
-                ? "border-green-200 bg-green-50"
+                ? "border-teal-200 bg-teal-50"
                 : verdict === "MARGINAL"
                 ? "border-amber-200 bg-amber-50"
                 : "border-red-200 bg-red-50"
@@ -352,7 +394,7 @@ export default function TripPage() {
           >
             <CardContent className="p-6 text-center">
               {verdict === "WORTH_IT" ? (
-                <CheckCircle2 className="mx-auto h-12 w-12 text-green-600" />
+                <CheckCircle2 className="mx-auto h-12 w-12 text-teal-600" />
               ) : verdict === "MARGINAL" ? (
                 <AlertTriangle className="mx-auto h-12 w-12 text-amber-600" />
               ) : (
@@ -419,7 +461,7 @@ export default function TripPage() {
                   <TrendingDown className="h-4 w-4" />
                   Grocery savings
                 </span>
-                <span className="font-semibold text-green-600">
+                <span className="font-semibold text-teal-600">
                   {formatPrice(savings)}
                 </span>
               </div>
@@ -441,7 +483,7 @@ export default function TripPage() {
             target="_blank"
             rel="noopener noreferrer"
           >
-            <Button className="w-full bg-green-600 hover:bg-green-700" size="lg">
+            <Button className="w-full bg-teal-600 hover:bg-teal-700" size="lg">
               <ExternalLink className="mr-2 h-5 w-5" />
               Get Directions in Google Maps
             </Button>

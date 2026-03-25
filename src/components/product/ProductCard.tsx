@@ -99,7 +99,7 @@ export function ProductCard({
 
         <CardContent className="p-4">
           {/* Product image placeholder */}
-          <div className="mb-3 flex h-28 sm:h-32 items-center justify-center rounded-xl bg-gradient-to-br from-muted/50 to-muted relative overflow-hidden group-hover:from-green-50/50 group-hover:to-emerald-50/50 transition-colors duration-300">
+          <div className="mb-3 flex h-28 sm:h-32 items-center justify-center rounded-xl bg-gradient-to-br from-muted/50 to-muted relative overflow-hidden group-hover:from-teal-50/50 group-hover:to-emerald-50/50 transition-colors duration-300">
             <motion.span
               className="text-5xl select-none"
               whileHover={{ scale: 1.15 }}
@@ -111,7 +111,7 @@ export function ProductCard({
 
           {/* Product info */}
           <div className="min-h-[3.5rem]">
-            <h3 className="text-sm font-semibold leading-tight line-clamp-2 group-hover:text-green-600 transition-colors">
+            <h3 className="text-sm font-semibold leading-tight line-clamp-2 group-hover:text-teal-600 transition-colors">
               {name}
             </h3>
             <div className="flex items-center gap-2 mt-0.5">
@@ -130,7 +130,7 @@ export function ProductCard({
           <div className="mt-3 pt-3 border-t border-dashed">
             <div className="flex items-end justify-between">
               <div>
-                <p className="text-xl font-bold text-green-600 tabular-nums">
+                <p className="text-xl font-bold text-teal-600 tabular-nums">
                   {formatPrice(minPrice)}
                 </p>
                 {hasSavings && (
@@ -157,11 +157,11 @@ export function ProductCard({
               <div className="mt-1.5 flex items-center gap-2">
                 <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-green-400 to-green-500"
+                    className="h-full rounded-full bg-gradient-to-r from-teal-400 to-teal-500"
                     style={{ width: `${Math.min(100, (savings / maxPrice) * 100)}%` }}
                   />
                 </div>
-                <span className="text-[10px] font-bold text-green-600 whitespace-nowrap">
+                <span className="text-[10px] font-bold text-teal-600 whitespace-nowrap">
                   Save {formatPrice(savings)}
                 </span>
               </div>
@@ -182,7 +182,7 @@ export function ProductCard({
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
-                className="mt-3 flex items-center justify-center gap-1.5 rounded-lg bg-green-50 py-2 text-sm font-medium text-green-600"
+                className="mt-3 flex items-center justify-center gap-1.5 rounded-lg bg-teal-50 py-2 text-sm font-medium text-teal-600"
               >
                 <Check className="h-4 w-4" />
                 Added!
@@ -197,7 +197,7 @@ export function ProductCard({
                 <Button
                   size="sm"
                   variant="outline"
-                  className="mt-3 w-full sm:opacity-0 sm:group-hover:opacity-100 transition-all rounded-lg hover:bg-green-50 hover:text-green-600 hover:border-green-200"
+                  className="mt-3 w-full sm:opacity-0 sm:group-hover:opacity-100 transition-all rounded-lg hover:bg-teal-50 hover:text-teal-600 hover:border-teal-200"
                   onClick={handleAddToBasket}
                 >
                   <ShoppingCart className="mr-1.5 h-3.5 w-3.5" />

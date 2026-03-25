@@ -11,7 +11,7 @@ interface PriceBadgeProps {
 export function PriceBadge({ price, originalPrice, isOnSale, isCheapest }: PriceBadgeProps) {
   return (
     <div className="flex items-center gap-2">
-      <span className={`text-lg font-bold ${isCheapest ? "text-green-600" : ""}`}>
+      <span className={`text-lg font-bold ${isCheapest ? "text-teal-600" : ""}`}>
         {formatPrice(price)}
       </span>
       {isOnSale && originalPrice && (

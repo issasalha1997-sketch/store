@@ -95,7 +95,7 @@ export function SearchBar({
       >
         <Search
           className={`absolute left-4 text-muted-foreground transition-colors ${
-            isFocused ? "text-green-500" : ""
+            isFocused ? "text-teal-500" : ""
           } ${isLarge ? "h-5 w-5" : "h-4 w-4"}`}
         />
         <Input
@@ -121,13 +121,13 @@ export function SearchBar({
             isLarge ? "h-14 pl-12 pr-28 text-lg" : "h-11 pl-11 pr-20"
           } rounded-full border-2 bg-white transition-all duration-200 ${
             isFocused
-              ? "border-green-400 ring-4 ring-green-100"
-              : "border-border hover:border-green-200"
+              ? "border-teal-400 ring-4 ring-teal-100"
+              : "border-border hover:border-teal-200"
           }`}
         />
         <Button
           type="submit"
-          className={`absolute right-1.5 rounded-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-md shadow-green-500/20 transition-all hover:shadow-green-500/30 ${
+          className={`absolute right-1.5 rounded-full bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 shadow-md shadow-teal-500/20 transition-all hover:shadow-teal-500/30 ${
             isLarge ? "h-11 px-6" : "h-8 px-4 text-xs"
           }`}
         >
@@ -151,7 +151,7 @@ export function SearchBar({
                 type="button"
                 className={`flex w-full items-center justify-between px-4 py-3 text-left text-sm transition-colors ${
                   index === selectedIndex
-                    ? "bg-green-50"
+                    ? "bg-teal-50"
                     : "hover:bg-muted/50"
                 } ${index > 0 ? "border-t border-border/50" : ""}`}
                 onMouseDown={() => {
@@ -174,7 +174,7 @@ export function SearchBar({
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-green-600 tabular-nums">
+                  <span className="text-sm font-bold text-teal-600 tabular-nums">
                     {formatPrice(item.minPrice)}
                   </span>
                   {item.minPrice !== item.maxPrice && (
@@ -189,7 +189,7 @@ export function SearchBar({
             <div className="border-t bg-muted/30 px-4 py-2.5">
               <button
                 type="submit"
-                className="text-xs text-green-600 font-medium hover:text-green-700"
+                className="text-xs text-teal-600 font-medium hover:text-teal-700"
                 onMouseDown={handleSubmit as () => void}
               >
                 See all results for &ldquo;{query}&rdquo; &rarr;

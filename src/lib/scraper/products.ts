@@ -317,65 +317,13 @@ export async function scrapeStore(
   }
 }
 
-/**
- * Strips store name prefixes and store-brand names to produce a canonical
- * product name for cross-store matching.
- * "Tesco Irish Whole Milk 2L" → "Irish Whole Milk 2L"
- * "Dunnes Irish Whole Milk 2L" → "Irish Whole Milk 2L"
- */
-const STORE_PREFIXES = [
-  "tesco",
-  "dunnes",
-  "lidl",
-  "aldi",
-  "supervalu",
-];
-
-const STORE_BRAND_NAMES = [
-  // Lidl brands
-  "creggan", "kilkeely", "coolmore", "ombra", "newgate", "eridanous",
-  "milbona", "ballyburren", "birchwood", "rowan hill", "kildevand",
-  "solevita", "bellarom", "freeway", "trattoria alfredo", "gelatelli",
-  "snaktastic", "w5", "formil",
-  // Aldi brands
-  "castlefarm", "greenvale", "clonbawn", "cucina", "the pantry",
-  "brooklea", "ashdale", "nature's glen", "village bakery", "aqua falls",
-  "nature's pick", "alcafé", "summit", "ocean trader", "carlos",
-  "four seasons", "grandessa", "dairyfine", "moser roth", "snackrite",
-  "belmont", "saxon", "magnum", "almat",
-];
-
-export function normalizeProductName(name: string): string {
-  let normalized = name.trim();
-
-  // Strip store name prefix (case-insensitive, only if at start)
-  for (const prefix of STORE_PREFIXES) {
-    const re = new RegExp(`^${prefix}\\s+`, "i");
-    if (re.test(normalized)) {
-      normalized = normalized.replace(re, "");
-      break;
-    }
-  }
-
-  // Strip store-brand names when they appear as the first word(s)
-  for (const brand of STORE_BRAND_NAMES) {
-    const re = new RegExp(`^${brand.replace(/['']/g, "[''']?")}\\s+`, "i");
-    if (re.test(normalized)) {
-      normalized = normalized.replace(re, "");
-      break;
-    }
-  }
-
-  return normalized.trim();
-}
-
-export function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/['']/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
+// Re-export matching functions from the new matcher module
+export {
+  canonicalProductName,
+  productMatchSlug,
+  normalizeProductName,
+  slugify,
+} from "./matcher";
 
 export const CATEGORY_MAP: Record<string, string> = {
   "dairy & eggs": "dairy-eggs",

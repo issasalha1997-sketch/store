@@ -9,7 +9,7 @@ export function Footer() {
           {/* Brand */}
           <div className="col-span-2 lg:col-span-1">
             <div className="flex items-center gap-2.5 mb-4">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-green-500 to-green-700 text-white font-bold shadow-md shadow-green-500/20">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-teal-700 text-white font-bold shadow-md shadow-teal-500/20">
                 G
               </div>
               <span className="text-lg font-bold tracking-tight">
@@ -51,7 +51,7 @@ export function Footer() {
                     href={link.href}
                     className="text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1 group"
                   >
-                    <span className="w-0 group-hover:w-2 transition-all overflow-hidden text-green-600">
+                    <span className="w-0 group-hover:w-2 transition-all overflow-hidden text-teal-600">
                       &rarr;
                     </span>
                     {link.label}

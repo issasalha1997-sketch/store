@@ -211,7 +211,7 @@ export default function AdminDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
                 <Zap className="w-5 h-5 text-white" />
               </div>
               <div>
@@ -247,7 +247,7 @@ export default function AdminDashboard() {
                 size="sm"
                 onClick={() => triggerScrape("all")}
                 disabled={triggeringStore !== null}
-                className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white border-0"
+                className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white border-0"
               >
                 {triggeringStore === "all" ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
