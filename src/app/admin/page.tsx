@@ -221,6 +221,12 @@ export default function AdminDashboard() {
             </div>
 
             <div className="flex items-center gap-3">
+              <a href="/admin/merge">
+                <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:bg-zinc-800">
+                  <Package className="w-4 h-4 mr-1.5" />
+                  Merge Products
+                </Button>
+              </a>
               {isAnyRunning && (
                 <motion.div
                   initial={{ scale: 0 }}
