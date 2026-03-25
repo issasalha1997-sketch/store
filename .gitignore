@@ -49,3 +49,4 @@ __pycache__/
 *.pyc
 *.egg-info/
 scripts/aldi-scraped.json
+scripts/tesco-screenshot.png
