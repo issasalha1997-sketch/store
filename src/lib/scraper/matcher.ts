@@ -116,9 +116,38 @@ export function canonicalProductName(
     }
   }
 
-  // Remove "Irish" prefix (common in Irish stores: "Irish Whole Milk")
-  // Keep it as it's a meaningful descriptor
-  // n = n.replace(/^Irish\s+/i, "");
+  // Strip common filler prefixes that differ between stores
+  // "Irish Whole Milk" = "Fresh Irish Whole Milk" = "Whole Milk"
+  // "Fresh Irish Chicken" = "Irish Chicken" = "Chicken"
+  const FILLER_PREFIXES = [
+    /^fresh\s+irish\s+/i,
+    /^irish\s+/i,
+    /^fresh\s+/i,
+    /^organic\s+/i,
+  ];
+  for (const re of FILLER_PREFIXES) {
+    if (re.test(n)) {
+      n = n.replace(re, "");
+    }
+  }
+
+  // Normalize common synonyms
+  n = n
+    .replace(/\bfree\s*range\b/i, "Free Range")
+    .replace(/\blow\s*fat\b/i, "Low Fat")
+    .replace(/\bwhole\s*meal\b/i, "Wholemeal")
+    .replace(/\bsliced\s*pan\b/i, "Sliced Pan")
+    .replace(/\bwhite\s*bread\b/i, "White Sliced Pan")
+    .replace(/\bbrown\s*bread\b/i, "Wholemeal Sliced Pan")
+    .replace(/\bchicken\s*breast\s*fillets?\b/i, "Chicken Fillets")
+    .replace(/\bbeef\s*(?:round\s*)?steak\s*mince\b/i, "Beef Mince")
+    .replace(/\bround\s*steak\s*mince\b/i, "Beef Mince")
+    .replace(/\bbeef\s+beef\b/i, "Beef")
+    .replace(/\bstreaky\s*bacon\s*rashers?\b/i, "Streaky Bacon")
+    .replace(/\bback\s*bacon\s*rashers?\b/i, "Back Bacon")
+    .replace(/\bpork\s*sausages?\b/i, "Pork Sausages")
+    .replace(/\brooster\s+potatoes?\b/i, "Rooster Potatoes")
+    .replace(/\bbaby\s+potatoes?\b/i, "Baby Potatoes");
 
   // Extract weight from the name
   const { cleanName, weightStr: nameWeight } = extractWeightFromName(n);
