@@ -331,112 +331,154 @@ export default function ProductDetailPage() {
             </AnimatePresence>
           </div>
 
-          {/* Compare All Sizes — family members */}
-          {product.familyMembers && product.familyMembers.length > 1 && (
-            <Card className="mt-8 border-0 shadow-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Scale className="h-5 w-5 text-teal-600" />
-                  Compare All Sizes
-                </CardTitle>
-                <p className="text-xs text-muted-foreground">
-                  Same product, different sizes across stores — sorted by unit price (best value first)
-                </p>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {product.familyMembers.map(
-                    (
-                      member: {
-                        id: string;
-                        name: string;
-                        slug: string;
-                        weight: number | null;
-                        weightUnit: string | null;
-                        store: string;
-                        storeSlug: string;
-                        storeColor: string | null;
-                        price: number;
-                        unitPrice: number | null;
-                        unitPriceUnit: string | null;
-                      },
-                      index: number
-                    ) => {
-                      const isCurrent = member.slug === product.slug;
-                      const isBest = index === 0;
-                      return (
-                        <Link
-                          key={`${member.id}-${member.storeSlug}`}
-                          href={isCurrent ? "#" : `/product/${member.slug}`}
-                          className={`block rounded-lg p-3 transition-colors ${
-                            isCurrent
-                              ? "bg-teal-50 border-2 border-teal-200"
-                              : "bg-muted/30 hover:bg-muted/60 border-2 border-transparent"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <div
-                                className="h-6 w-6 rounded-md flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0"
-                                style={{
-                                  backgroundColor:
-                                    member.storeColor || "#666",
-                                }}
+          {/* Other Sizes — family members grouped by weight */}
+          {product.familyMembers && product.familyMembers.length > 1 && (() => {
+            type FamilyMember = {
+              id: string;
+              name: string;
+              slug: string;
+              weight: number | null;
+              weightUnit: string | null;
+              store: string;
+              storeSlug: string;
+              storeColor: string | null;
+              price: number;
+              unitPrice: number | null;
+              unitPriceUnit: string | null;
+            };
+            const members: FamilyMember[] = product.familyMembers;
+
+            // Normalize weight to grams for grouping
+            function toGrams(w: number | null, u: string | null): number {
+              if (!w || !u) return 0;
+              const unit = u.toLowerCase();
+              if (unit === "kg") return w * 1000;
+              if (unit === "g") return w;
+              if (unit === "l" || unit === "ltr" || unit === "litre") return w * 1000;
+              if (unit === "ml") return w;
+              if (unit === "cl") return w * 10;
+              if (unit.includes("pack") || unit.includes("pk")) return w * 10000; // separate group
+              return w;
+            }
+
+            // Group members by approximate weight (±20% tolerance)
+            const groups: { label: string; sortWeight: number; items: FamilyMember[] }[] = [];
+            const sorted = [...members].sort((a, b) => toGrams(a.weight, a.weightUnit) - toGrams(b.weight, b.weightUnit));
+
+            for (const m of sorted) {
+              const grams = toGrams(m.weight, m.weightUnit);
+              // Find an existing group within 20% tolerance
+              const existingGroup = groups.find(g => {
+                const diff = Math.abs(grams - g.sortWeight) / Math.max(g.sortWeight, 1);
+                return diff < 0.2;
+              });
+              if (existingGroup) {
+                existingGroup.items.push(m);
+              } else {
+                // Create label for the weight
+                let label = "Other";
+                if (m.weight && m.weightUnit) {
+                  label = `${m.weight}${m.weightUnit}`;
+                } else {
+                  // Extract from name
+                  const wMatch = m.name.match(/(\d+(?:\.\d+)?)\s*(g|kg|ml|l|cl|pk|pack)/i);
+                  if (wMatch) label = `${wMatch[1]}${wMatch[2]}`;
+                }
+                groups.push({ label, sortWeight: grams || 999999, items: [m] });
+              }
+            }
+
+            // Only show if there are actually different size groups
+            if (groups.length <= 1 && groups[0]?.items.length === members.length) {
+              // All same size — already shown in Price Comparison above
+              return null;
+            }
+
+            return (
+              <Card className="mt-8 border-0 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base font-bold flex items-center gap-2">
+                    <Scale className="h-5 w-5 text-teal-600" />
+                    Other Sizes
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    Compare stores for each size — pick what suits you
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {groups.map((group) => {
+                    const cheapestInGroup = group.items.reduce((min, m) =>
+                      m.price < min.price ? m : min
+                    );
+                    return (
+                      <div key={group.label} className="space-y-1.5">
+                        {/* Size header */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
+                            {group.label}
+                          </span>
+                          <div className="flex-1 h-px bg-neutral-100" />
+                          {group.items.length > 1 && (
+                            <span className="text-[10px] text-neutral-400">
+                              {group.items.length} stores
+                            </span>
+                          )}
+                        </div>
+                        {/* Store comparisons for this size */}
+                        {group.items
+                          .sort((a, b) => a.price - b.price)
+                          .map((member) => {
+                            const isCurrent = member.slug === product.slug;
+                            const isCheapest = member.price === cheapestInGroup.price && group.items.length > 1;
+                            return (
+                              <Link
+                                key={`${member.id}-${member.storeSlug}`}
+                                href={isCurrent ? "#" : `/product/${member.slug}`}
+                                className={`flex items-center gap-2.5 rounded-xl p-2.5 transition-all ${
+                                  isCurrent
+                                    ? "bg-teal-50 ring-1 ring-teal-200"
+                                    : isCheapest
+                                      ? "bg-emerald-50/60 hover:bg-emerald-50"
+                                      : "bg-neutral-50/60 hover:bg-neutral-50"
+                                }`}
                               >
-                                {member.store[0]}
-                              </div>
-                              <div className="min-w-0">
-                                <p
-                                  className={`text-sm font-medium truncate ${
-                                    isCurrent ? "text-teal-700" : ""
-                                  }`}
-                                >
-                                  {member.name}
+                                <div
+                                  className="w-1 h-7 rounded-full flex-shrink-0"
+                                  style={{ backgroundColor: member.storeColor || "#999" }}
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <span className="text-sm font-medium text-neutral-800">
+                                    {member.store}
+                                  </span>
                                   {isCurrent && (
-                                    <span className="text-[10px] ml-1.5 text-teal-500">
-                                      (viewing)
+                                    <span className="text-[10px] ml-1 text-teal-500">(viewing)</span>
+                                  )}
+                                  {isCheapest && (
+                                    <span className="text-[9px] ml-1 bg-emerald-600 text-white px-1 py-0.5 rounded-full font-bold">
+                                      BEST
                                     </span>
                                   )}
-                                </p>
-                                <p className="text-[11px] text-muted-foreground">
-                                  {member.store}
-                                  {member.weight && member.weightUnit && (
-                                    <span>
-                                      {" "}
-                                      · {member.weight}
-                                      {member.weightUnit}
-                                    </span>
+                                </div>
+                                <div className="text-right flex-shrink-0">
+                                  <span className={`text-sm font-bold tabular-nums ${isCheapest ? "text-emerald-700" : ""}`}>
+                                    {formatPrice(member.price)}
+                                  </span>
+                                  {member.unitPrice && member.unitPriceUnit && (
+                                    <p className="text-[10px] text-neutral-400 tabular-nums">
+                                      {formatPrice(member.unitPrice)}/{member.unitPriceUnit}
+                                    </p>
                                   )}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="text-right flex-shrink-0">
-                              <p className="text-sm font-bold tabular-nums">
-                                {formatPrice(member.price)}
-                              </p>
-                              {member.unitPrice && member.unitPriceUnit && (
-                                <p
-                                  className={`text-[11px] tabular-nums ${
-                                    isBest
-                                      ? "text-teal-600 font-semibold"
-                                      : "text-muted-foreground"
-                                  }`}
-                                >
-                                  {formatPrice(member.unitPrice)}/
-                                  {member.unitPriceUnit}
-                                  {isBest && " ★"}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </Link>
-                      );
-                    }
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                                </div>
+                              </Link>
+                            );
+                          })}
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            );
+          })()}
 
           {/* Reviews section */}
           <Card className="mt-8 border-0 shadow-sm">
