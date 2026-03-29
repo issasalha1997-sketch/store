@@ -84,6 +84,88 @@ export async function GET(
     // Remove raw reviews array from response and build clean object
     const { reviews: _reviews, ...productData } = product;
 
+    // Fetch family members — same product in different sizes across stores
+    let familyMembers: Array<{
+      id: string;
+      name: string;
+      slug: string;
+      weight: number | null;
+      weightUnit: string | null;
+      imageUrl: string | null;
+      brand: string | null;
+      store: string;
+      storeSlug: string;
+      storeColor: string | null;
+      price: number;
+      unitPrice: number | null;
+      unitPriceUnit: string | null;
+    }> = [];
+
+    if (product.familySlug) {
+      const siblings = await prisma.product.findMany({
+        where: {
+          familySlug: product.familySlug,
+          isActive: true,
+          id: { not: product.id },
+        },
+        include: {
+          prices: {
+            where: { isLatest: true },
+            include: {
+              store: { select: { name: true, slug: true, color: true } },
+            },
+          },
+        },
+      });
+
+      for (const sib of siblings) {
+        for (const p of sib.prices) {
+          familyMembers.push({
+            id: sib.id,
+            name: sib.name,
+            slug: sib.slug,
+            weight: sib.weight,
+            weightUnit: sib.weightUnit,
+            imageUrl: sib.imageUrl,
+            brand: sib.brand,
+            store: p.store.name,
+            storeSlug: p.store.slug,
+            storeColor: p.store.color,
+            price: Number(p.price),
+            unitPrice: p.unitPrice ? Number(p.unitPrice) : null,
+            unitPriceUnit: p.unitPriceUnit,
+          });
+        }
+      }
+
+      // Also include this product's own prices in the family view
+      for (const p of product.prices) {
+        familyMembers.push({
+          id: product.id,
+          name: product.name,
+          slug: product.slug,
+          weight: product.weight,
+          weightUnit: product.weightUnit,
+          imageUrl: product.imageUrl,
+          brand: product.brand,
+          store: p.store.name,
+          storeSlug: p.store.slug,
+          storeColor: p.store.color,
+          price: Number(p.price),
+          unitPrice: p.unitPrice ? Number(p.unitPrice) : null,
+          unitPriceUnit: p.unitPriceUnit,
+        });
+      }
+
+      // Sort by unit price (cheapest first), fallback to price
+      familyMembers.sort((a, b) => {
+        if (a.unitPrice && b.unitPrice) return a.unitPrice - b.unitPrice;
+        if (a.unitPrice) return -1;
+        if (b.unitPrice) return 1;
+        return a.price - b.price;
+      });
+    }
+
     return NextResponse.json({
       ...productData,
       prices: product.prices.map((p) => ({
@@ -105,6 +187,7 @@ export async function GET(
         scrapedAt: p.scrapedAt,
         store: p.store,
       })),
+      familyMembers: familyMembers.length > 1 ? familyMembers : [],
     });
   } catch (error) {
     console.error("GET /api/products/[id] error:", error);

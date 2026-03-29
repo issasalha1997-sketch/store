@@ -11,7 +11,7 @@
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { canonicalProductName, productMatchSlug } from "../src/lib/scraper/matcher";
+import { canonicalProductName, productMatchSlug, productFamilySlug } from "../src/lib/scraper/matcher";
 import { CATEGORY_MAP } from "../src/lib/scraper/products";
 import { scrapeAldiLive } from "../src/lib/scraper/aldi";
 import { scrapeTescoLive } from "../src/lib/scraper/tesco";
@@ -76,6 +76,7 @@ async function upsertProduct(
   const wu = extra?.weightUnit;
   const matchSlug = productMatchSlug(name, w, wu);
   const canonName = canonicalProductName(name, w, wu);
+  const famSlug = productFamilySlug(name, w, wu);
 
   const catSlug = CATEGORY_MAP[category.toLowerCase() as keyof typeof CATEGORY_MAP];
   const categoryId = catSlug ? catMap.get(catSlug) : undefined;
@@ -85,6 +86,7 @@ async function upsertProduct(
     create: {
       name: canonName,
       slug: matchSlug,
+      familySlug: famSlug,
       brand: extra?.brand || null,
       imageUrl: extra?.imageUrl || null,
       description: extra?.description?.slice(0, 500) || null,
@@ -97,6 +99,7 @@ async function upsertProduct(
       ...(extra?.imageUrl ? { imageUrl: extra.imageUrl } : {}),
       ...(extra?.brand ? { brand: extra.brand } : {}),
       ...(extra?.description ? { description: extra.description.slice(0, 500) } : {}),
+      familySlug: famSlug,
     },
   });
 

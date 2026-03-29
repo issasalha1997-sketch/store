@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { ShoppingCart, ArrowLeft, Check, Tag, ImageOff, Clock } from "lucide-react";
+import { ShoppingCart, ArrowLeft, Check, Tag, ImageOff, Clock, Scale } from "lucide-react";
 import { useBasket } from "@/hooks/useBasket";
 import { formatPrice } from "@/lib/utils";
 import Link from "next/link";
@@ -330,6 +330,113 @@ export default function ProductDetailPage() {
               )}
             </AnimatePresence>
           </div>
+
+          {/* Compare All Sizes — family members */}
+          {product.familyMembers && product.familyMembers.length > 1 && (
+            <Card className="mt-8 border-0 shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Scale className="h-5 w-5 text-teal-600" />
+                  Compare All Sizes
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  Same product, different sizes across stores — sorted by unit price (best value first)
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {product.familyMembers.map(
+                    (
+                      member: {
+                        id: string;
+                        name: string;
+                        slug: string;
+                        weight: number | null;
+                        weightUnit: string | null;
+                        store: string;
+                        storeSlug: string;
+                        storeColor: string | null;
+                        price: number;
+                        unitPrice: number | null;
+                        unitPriceUnit: string | null;
+                      },
+                      index: number
+                    ) => {
+                      const isCurrent = member.slug === product.slug;
+                      const isBest = index === 0;
+                      return (
+                        <Link
+                          key={`${member.id}-${member.storeSlug}`}
+                          href={isCurrent ? "#" : `/product/${member.slug}`}
+                          className={`block rounded-lg p-3 transition-colors ${
+                            isCurrent
+                              ? "bg-teal-50 border-2 border-teal-200"
+                              : "bg-muted/30 hover:bg-muted/60 border-2 border-transparent"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div
+                                className="h-6 w-6 rounded-md flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0"
+                                style={{
+                                  backgroundColor:
+                                    member.storeColor || "#666",
+                                }}
+                              >
+                                {member.store[0]}
+                              </div>
+                              <div className="min-w-0">
+                                <p
+                                  className={`text-sm font-medium truncate ${
+                                    isCurrent ? "text-teal-700" : ""
+                                  }`}
+                                >
+                                  {member.name}
+                                  {isCurrent && (
+                                    <span className="text-[10px] ml-1.5 text-teal-500">
+                                      (viewing)
+                                    </span>
+                                  )}
+                                </p>
+                                <p className="text-[11px] text-muted-foreground">
+                                  {member.store}
+                                  {member.weight && member.weightUnit && (
+                                    <span>
+                                      {" "}
+                                      · {member.weight}
+                                      {member.weightUnit}
+                                    </span>
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                              <p className="text-sm font-bold tabular-nums">
+                                {formatPrice(member.price)}
+                              </p>
+                              {member.unitPrice && member.unitPriceUnit && (
+                                <p
+                                  className={`text-[11px] tabular-nums ${
+                                    isBest
+                                      ? "text-teal-600 font-semibold"
+                                      : "text-muted-foreground"
+                                  }`}
+                                >
+                                  {formatPrice(member.unitPrice)}/
+                                  {member.unitPriceUnit}
+                                  {isBest && " ★"}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </Link>
+                      );
+                    }
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Reviews section */}
           <Card className="mt-8 border-0 shadow-sm">

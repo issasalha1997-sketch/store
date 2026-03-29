@@ -287,6 +287,72 @@ export function productMatchSlug(
     .replace(/^-+|-+$/g, "");
 }
 
+/**
+ * Generate a family slug — the product name WITHOUT weight/size.
+ * Used to group different sizes of the same product across stores.
+ * e.g. "Whole Milk 2000ml" and "Whole Milk 1000ml" → "whole-milk"
+ */
+export function productFamilySlug(
+  name: string,
+  weight?: number,
+  weightUnit?: string
+): string {
+  // Get canonical name but strip the weight part
+  let n = name.trim();
+
+  // Strip store/brand prefixes
+  for (const prefix of ALL_PREFIXES) {
+    const re = new RegExp(`^${escapeRegex(prefix)}[\\s\\-]*`, "i");
+    if (re.test(n)) {
+      n = n.replace(re, "");
+      break;
+    }
+  }
+
+  // Strip filler prefixes
+  const FILLER_PREFIXES = [
+    /^fresh\s+irish\s+/i,
+    /^irish\s+/i,
+    /^fresh\s+/i,
+    /^organic\s+/i,
+    /^100%\s+/i,
+  ];
+  for (const re of FILLER_PREFIXES) {
+    if (re.test(n)) {
+      n = n.replace(re, "");
+    }
+  }
+
+  // Normalize product name variations
+  n = normalizeProductVariations(n);
+
+  // Strip ALL weight/size patterns from name
+  const { cleanName } = extractWeightFromName(n);
+
+  // Clean up
+  let clean = cleanName
+    .replace(/\s+/g, " ")
+    .replace(/[()]/g, "")
+    .replace(/,\s*$/, "")
+    .replace(/\s*-\s*$/, "")
+    .replace(/\s*[|/]\s*/g, " ")
+    .trim();
+
+  // Remove filler words
+  clean = clean
+    .replace(/\b(?:premium|finest|selected?|quality|value|essential)\b/gi, "")
+    .replace(/\b(?:ireland|irish|from\s+ireland)\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // To slug
+  return clean
+    .toLowerCase()
+    .replace(/['']/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
