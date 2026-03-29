@@ -1,6 +1,6 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { SearchBar } from "@/components/search/SearchBar";
 import { ProductCard } from "@/components/product/ProductCard";
@@ -8,22 +8,46 @@ import { FamilyCard } from "@/components/product/FamilyCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { CATEGORIES } from "@/lib/constants";
+import { CATEGORIES, STORES } from "@/lib/constants";
 import Link from "next/link";
-import { Suspense, useState } from "react";
+import { Suspense, useState, useCallback } from "react";
 import { SlidersHorizontal, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 function SearchContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const q = searchParams.get("q") || "";
   const categoryParam = searchParams.get("category") || "";
-  const [sortBy, setSortBy] = useState("relevance");
-  const [page, setPage] = useState(1);
+  const sortBy = searchParams.get("sortBy") || "relevance";
+  const page = Number(searchParams.get("page") || "1");
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedStores, setSelectedStores] = useState<string[]>([]);
+
+  const updateSearchParams = useCallback(
+    (updates: Record<string, string | null>) => {
+      const params = new URLSearchParams(searchParams.toString());
+      for (const [key, value] of Object.entries(updates)) {
+        if (value === null || value === "") {
+          params.delete(key);
+        } else {
+          params.set(key, value);
+        }
+      }
+      router.push(`/search?${params.toString()}`);
+    },
+    [searchParams, router]
+  );
+
+  const toggleStore = (slug: string) => {
+    setSelectedStores((prev) =>
+      prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]
+    );
+    updateSearchParams({ page: null });
+  };
 
   const { data, isLoading } = useQuery({
-    queryKey: ["products", q, categoryParam, sortBy, page],
+    queryKey: ["products", q, categoryParam, sortBy, page, selectedStores],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (q) params.set("q", q);
@@ -32,6 +56,9 @@ function SearchContent() {
       params.set("page", String(page));
       params.set("limit", "24");
       params.set("group", "family");
+      if (selectedStores.length > 0) {
+        params.set("store", selectedStores.join(","));
+      }
       const res = await fetch(`/api/products?${params}`);
       return res.json();
     },
@@ -74,14 +101,14 @@ function SearchContent() {
             <SlidersHorizontal className="mr-1.5 h-4 w-4" />
             Filters
             {categoryParam && (
-              <span className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-teal-100 text-[10px] font-bold text-teal-700">
+              <span className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-teal-100 text-xs font-bold text-teal-700">
                 1
               </span>
             )}
           </Button>
           <Select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
+            onChange={(e) => updateSearchParams({ sortBy: e.target.value === "relevance" ? null : e.target.value, page: null })}
             className="text-sm"
           >
             <option value="relevance">Sort by: Relevance</option>
@@ -90,6 +117,48 @@ function SearchContent() {
             <option value="name">Name: A-Z</option>
           </Select>
         </div>
+      </div>
+
+      {/* Store filter chips */}
+      <div className="flex flex-wrap items-center gap-2 mb-6">
+        <span className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-wide mr-1">
+          Stores:
+        </span>
+        {STORES.map((store) => {
+          const isActive = selectedStores.includes(store.slug);
+          return (
+            <button
+              key={store.slug}
+              onClick={() => toggleStore(store.slug)}
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-all duration-200 border ${
+                isActive
+                  ? "text-white border-transparent shadow-sm"
+                  : "bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300"
+              }`}
+              style={
+                isActive
+                  ? { backgroundColor: store.color }
+                  : undefined
+              }
+            >
+              <div
+                className={`h-2.5 w-2.5 rounded-full flex-shrink-0 ${
+                  isActive ? "bg-white/40" : ""
+                }`}
+                style={!isActive ? { backgroundColor: store.color } : undefined}
+              />
+              {store.name}
+            </button>
+          );
+        })}
+        {selectedStores.length > 0 && (
+          <button
+            onClick={() => setSelectedStores([])}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
+          >
+            Clear stores
+          </button>
+        )}
       </div>
 
       <div className="flex gap-8">
@@ -233,6 +302,10 @@ function SearchContent() {
                         bestUnitPriceUnit={item.bestUnitPriceUnit as string | null}
                         bestUnitStore={item.bestUnitStore as string | null}
                         isOnSale={item.isOnSale as boolean}
+                        cheapestProductId={item.cheapestProductId as string | undefined}
+                        cheapestProductSlug={item.cheapestProductSlug as string | undefined}
+                        weight={item.cheapestWeight as number | null | undefined}
+                        weightUnit={item.cheapestWeightUnit as string | null | undefined}
                       />
                     ) : (
                       <ProductCard
@@ -266,7 +339,7 @@ function SearchContent() {
                     variant="outline"
                     size="sm"
                     disabled={page <= 1}
-                    onClick={() => setPage((p) => p - 1)}
+                    onClick={() => updateSearchParams({ page: page - 1 <= 1 ? null : String(page - 1) })}
                     className="rounded-lg"
                   >
                     <ChevronLeft className="h-4 w-4 mr-1" />
@@ -279,7 +352,7 @@ function SearchContent() {
                         return (
                           <button
                             key={pageNum}
-                            onClick={() => setPage(pageNum)}
+                            onClick={() => updateSearchParams({ page: pageNum <= 1 ? null : String(pageNum) })}
                             className={`h-8 w-8 rounded-lg text-sm font-medium transition-colors ${
                               page === pageNum
                                 ? "bg-teal-600 text-white"
@@ -296,7 +369,7 @@ function SearchContent() {
                     variant="outline"
                     size="sm"
                     disabled={page >= totalPages}
-                    onClick={() => setPage((p) => p + 1)}
+                    onClick={() => updateSearchParams({ page: String(page + 1) })}
                     className="rounded-lg"
                   >
                     Next

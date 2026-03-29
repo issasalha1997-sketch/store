@@ -174,7 +174,7 @@ export default function ProductDetailPage() {
           <div className="mt-4 grid grid-cols-3 gap-3">
             <Card className="border-0 shadow-sm">
               <CardContent className="p-3 text-center">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
                   Cheapest
                 </p>
                 <p className="text-lg font-bold text-teal-600 tabular-nums">
@@ -184,7 +184,7 @@ export default function ProductDetailPage() {
             </Card>
             <Card className="border-0 shadow-sm">
               <CardContent className="p-3 text-center">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
                   Most Expensive
                 </p>
                 <p className="text-lg font-bold tabular-nums">
@@ -194,7 +194,7 @@ export default function ProductDetailPage() {
             </Card>
             <Card className="border-0 shadow-sm bg-teal-50">
               <CardContent className="p-3 text-center">
-                <p className="text-[10px] uppercase tracking-wide text-teal-600 font-medium">
+                <p className="text-xs uppercase tracking-wide text-teal-600 font-medium">
                   You Save
                 </p>
                 <p className="text-lg font-bold text-teal-600 tabular-nums">
@@ -430,7 +430,7 @@ export default function ProductDetailPage() {
                           </span>
                           <div className="flex-1 h-px bg-neutral-100" />
                           {group.items.length > 1 && (
-                            <span className="text-[10px] text-neutral-400">
+                            <span className="text-xs text-neutral-400">
                               {group.items.length} stores
                             </span>
                           )}
@@ -462,10 +462,10 @@ export default function ProductDetailPage() {
                                     {member.store}
                                   </span>
                                   {isCurrent && (
-                                    <span className="text-[10px] ml-1 text-teal-500">(viewing)</span>
+                                    <span className="text-xs ml-1 text-teal-500">(viewing)</span>
                                   )}
                                   {isCheapest && (
-                                    <span className="text-[9px] ml-1 bg-emerald-600 text-white px-1 py-0.5 rounded-full font-bold">
+                                    <span className="text-[11px] ml-1 bg-emerald-600 text-white px-1 py-0.5 rounded-full font-bold">
                                       BEST
                                     </span>
                                   )}
@@ -475,7 +475,7 @@ export default function ProductDetailPage() {
                                     {formatPrice(member.price)}
                                   </span>
                                   {member.unitPrice && member.unitPriceUnit && (
-                                    <p className="text-[10px] text-neutral-400 tabular-nums">
+                                    <p className="text-xs text-neutral-400 tabular-nums">
                                       {formatPrice(member.unitPrice)}/{member.unitPriceUnit}
                                     </p>
                                   )}

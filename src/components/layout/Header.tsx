@@ -10,6 +10,7 @@ import {
   User,
   ChevronRight,
   Settings,
+  Tag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useBasket } from "@/hooks/useBasket";
@@ -20,6 +21,7 @@ import { motion, AnimatePresence } from "framer-motion";
 const navLinks = [
   { href: "/search", label: "Search", icon: Search },
   { href: "/categories", label: "Categories", icon: null },
+  { href: "/deals", label: "Deals", icon: Tag },
   { href: "/trip", label: "Trip Planner", icon: MapPin },
 ];
 

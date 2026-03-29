@@ -130,26 +130,36 @@ async function upsertProduct(
     },
   });
 
-  // Skip if already has a price from this store
-  const existing = await prisma.price.findFirst({
-    where: { productId: product.id, storeId, isLatest: true },
-  });
-  if (existing) return false;
+  // Always update: mark old prices as not latest and create a new price record.
+  // Wrapped in a transaction to ensure consistency.
+  await prisma.$transaction(async (tx) => {
+    // Mark any existing latest price for this product+store as stale
+    await tx.price.updateMany({
+      where: {
+        productId: product.id,
+        storeId,
+        isLatest: true,
+      },
+      data: { isLatest: false },
+    });
 
-  await prisma.price.create({
-    data: {
-      productId: product.id,
-      storeId,
-      price,
-      originalPrice: extra?.originalPrice || null,
-      isOnSale: extra?.isOnSale || false,
-      unitPrice: extra?.unitPrice || null,
-      unitPriceUnit: extra?.unitPriceUnit || null,
-      currency: "EUR",
-      isLatest: true,
-      scrapedAt: new Date(),
-    },
+    // Create the new latest price record
+    await tx.price.create({
+      data: {
+        productId: product.id,
+        storeId,
+        price,
+        originalPrice: extra?.originalPrice || null,
+        isOnSale: extra?.isOnSale || false,
+        unitPrice: extra?.unitPrice || null,
+        unitPriceUnit: extra?.unitPriceUnit || null,
+        currency: "EUR",
+        isLatest: true,
+        scrapedAt: new Date(),
+      },
+    });
   });
+
   return true;
 }
 

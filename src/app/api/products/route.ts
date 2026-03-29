@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { q, category, onSaleOnly, sortBy, page, limit } = parsed.data;
+    const { q, category, store, onSaleOnly, sortBy, page, limit } = parsed.data;
 
     // Build where clause
     const where: Prisma.ProductWhereInput = {
@@ -46,7 +46,18 @@ export async function GET(request: NextRequest) {
       where.category = { slug: category };
     }
 
-    if (onSaleOnly) {
+    // Support comma-separated store slugs (e.g., "tesco,aldi,lidl")
+    const storeSlugs = store ? store.split(",").map((s) => s.trim()).filter(Boolean) : [];
+
+    if (storeSlugs.length > 0) {
+      where.prices = {
+        some: {
+          isLatest: true,
+          store: { slug: { in: storeSlugs } },
+          ...(onSaleOnly ? { isOnSale: true } : {}),
+        },
+      };
+    } else if (onSaleOnly) {
       where.prices = {
         some: { isLatest: true, isOnSale: true },
       };
@@ -54,7 +65,7 @@ export async function GET(request: NextRequest) {
 
     // ─── Family-grouped mode ──────────────────────────────
     if (groupByFamily) {
-      return handleFamilyGrouped(where, q, sortBy, page, limit);
+      return handleFamilyGrouped(q, category, store, onSaleOnly, sortBy, page, limit);
     }
 
     // ─── Standard individual product mode ─────────────────
@@ -141,137 +152,205 @@ export async function GET(request: NextRequest) {
 
 /**
  * Family-grouped search: returns one result per product family.
- * Each result aggregates all sizes/stores for that family.
+ * Uses database-level GROUP BY instead of loading all products into memory.
  */
 async function handleFamilyGrouped(
-  where: Prisma.ProductWhereInput,
   q: string | undefined,
+  category: string | undefined,
+  store: string | undefined,
+  onSaleOnly: boolean | undefined,
   sortBy: string | undefined,
   page: number,
   limit: number
 ) {
-  // Fetch ALL matching products with their prices (we'll group in JS)
-  const products = await prisma.product.findMany({
-    where,
-    include: {
-      category: { select: { id: true, name: true, slug: true } },
-      prices: {
-        where: { isLatest: true },
-        include: {
-          store: {
-            select: {
-              id: true, name: true, slug: true, color: true,
-            },
-          },
-        },
-        orderBy: { price: "asc" },
-      },
-    },
-    orderBy: { name: "asc" },
-  });
+  // Build dynamic WHERE clauses and params
+  const conditions: string[] = [
+    `p."isActive" = true`,
+    `p."familySlug" IS NOT NULL`,
+  ];
+  const params: unknown[] = [];
+  let paramIndex = 1;
 
-  // Group by familySlug
-  const familyMap = new Map<
+  if (q) {
+    conditions.push(
+      `(p.name ILIKE $${paramIndex} OR p.brand ILIKE $${paramIndex} OR p.description ILIKE $${paramIndex})`
+    );
+    params.push(`%${q}%`);
+    paramIndex++;
+  }
+
+  if (category) {
+    conditions.push(`c.slug = $${paramIndex}`);
+    params.push(category);
+    paramIndex++;
+  }
+
+  // Support comma-separated store slugs
+  const storeSlugs = store ? store.split(",").map((s) => s.trim()).filter(Boolean) : [];
+  if (storeSlugs.length > 0) {
+    conditions.push(`s.slug = ANY($${paramIndex})`);
+    params.push(storeSlugs);
+    paramIndex++;
+  }
+
+  if (onSaleOnly) {
+    conditions.push(`pr."isOnSale" = true`);
+  }
+
+  const whereClause = conditions.join(" AND ");
+
+  // Determine ORDER BY
+  let orderByClause: string;
+  if (sortBy === "price_asc") {
+    orderByClause = `MIN(pr.price::numeric) ASC NULLS LAST, family_name ASC`;
+  } else if (sortBy === "price_desc") {
+    orderByClause = `MAX(pr.price::numeric) DESC NULLS LAST, family_name ASC`;
+  } else {
+    orderByClause = `store_count DESC, family_name ASC`;
+  }
+
+  const offset = (page - 1) * limit;
+
+  // Count total families
+  const countQuery = `
+    SELECT COUNT(*) as total FROM (
+      SELECT p."familySlug"
+      FROM "Product" p
+      JOIN "Price" pr ON pr."productId" = p.id AND pr."isLatest" = true
+      JOIN "Store" s ON s.id = pr."storeId"
+      LEFT JOIN "Category" c ON c.id = p."categoryId"
+      WHERE ${whereClause}
+      GROUP BY p."familySlug"
+    ) sub
+  `;
+
+  // Main grouped query
+  const dataQuery = `
+    SELECT
+      p."familySlug" as family_slug,
+      MIN(p.name) as family_name,
+      MIN(p.slug) as slug,
+      MIN(p."imageUrl") as image_url,
+      MIN(p.brand) as brand,
+      COUNT(DISTINCT pr."storeId") as store_count,
+      COUNT(*) as option_count,
+      COUNT(DISTINCT p.id) as product_count,
+      MIN(pr.price::numeric) as min_price,
+      MAX(pr.price::numeric) as max_price,
+      bool_or(pr."isOnSale") as is_on_sale,
+      MIN(pr."unitPrice"::numeric) as best_unit_price,
+      (ARRAY_AGG(pr."unitPriceUnit" ORDER BY pr."unitPrice" ASC NULLS LAST))[1] as best_unit_price_unit,
+      (ARRAY_AGG(p.id ORDER BY pr.price ASC))[1] as cheapest_product_id,
+      (ARRAY_AGG(p.slug ORDER BY pr.price ASC))[1] as cheapest_product_slug,
+      (ARRAY_AGG(p.weight ORDER BY pr.price ASC))[1] as cheapest_weight,
+      (ARRAY_AGG(p."weightUnit" ORDER BY pr.price ASC))[1] as cheapest_weight_unit
+    FROM "Product" p
+    JOIN "Price" pr ON pr."productId" = p.id AND pr."isLatest" = true
+    JOIN "Store" s ON s.id = pr."storeId"
+    LEFT JOIN "Category" c ON c.id = p."categoryId"
+    WHERE ${whereClause}
+    GROUP BY p."familySlug"
+    ORDER BY ${orderByClause}
+    LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+  `;
+
+  const dataParams = [...params, limit, offset];
+
+  // Run count and data queries in parallel
+  const [countResult, families] = await Promise.all([
+    prisma.$queryRawUnsafe<Array<{ total: bigint }>>(countQuery, ...params),
+    prisma.$queryRawUnsafe<
+      Array<{
+        family_slug: string;
+        family_name: string;
+        slug: string;
+        image_url: string | null;
+        brand: string | null;
+        store_count: bigint;
+        option_count: bigint;
+        product_count: bigint;
+        min_price: number | null;
+        max_price: number | null;
+        is_on_sale: boolean;
+        best_unit_price: number | null;
+        best_unit_price_unit: string | null;
+        cheapest_product_id: string | null;
+        cheapest_product_slug: string | null;
+        cheapest_weight: number | null;
+        cheapest_weight_unit: string | null;
+      }>
+    >(dataQuery, ...dataParams),
+  ]);
+
+  const total = Number(countResult[0]?.total ?? 0);
+  const totalPages = Math.ceil(total / limit);
+
+  // Fetch stores for the current page families only (not all families)
+  const familySlugs = families.map((f) => f.family_slug);
+  let storesByFamily = new Map<
     string,
-    {
-      familySlug: string;
-      products: typeof products;
-    }
+    Array<{ name: string; slug: string; color: string | null }>
   >();
 
-  for (const product of products) {
-    const fSlug = product.familySlug || product.slug;
-    if (!familyMap.has(fSlug)) {
-      familyMap.set(fSlug, { familySlug: fSlug, products: [] });
+  if (familySlugs.length > 0) {
+    const storeQuery = `
+      SELECT DISTINCT
+        p."familySlug" as family_slug,
+        s.name,
+        s.slug,
+        s.color
+      FROM "Product" p
+      JOIN "Price" pr ON pr."productId" = p.id AND pr."isLatest" = true
+      JOIN "Store" s ON s.id = pr."storeId"
+      WHERE p."familySlug" = ANY($1) AND p."isActive" = true
+      ORDER BY p."familySlug", s.name
+    `;
+
+    const storeRows = await prisma.$queryRawUnsafe<
+      Array<{
+        family_slug: string;
+        name: string;
+        slug: string;
+        color: string | null;
+      }>
+    >(storeQuery, familySlugs);
+
+    for (const row of storeRows) {
+      if (!storesByFamily.has(row.family_slug)) {
+        storesByFamily.set(row.family_slug, []);
+      }
+      storesByFamily.get(row.family_slug)!.push({
+        name: row.name,
+        slug: row.slug,
+        color: row.color,
+      });
     }
-    familyMap.get(fSlug)!.products.push(product);
   }
 
-  // Build family results
-  const families = [...familyMap.values()].map((family) => {
-    const allPrices = family.products.flatMap((p) => p.prices);
-    const priceValues = allPrices.map((p) => Number(p.price));
-    const unitPrices = allPrices
-      .filter((p) => p.unitPrice != null)
-      .map((p) => ({
-        unitPrice: Number(p.unitPrice),
-        unitPriceUnit: p.unitPriceUnit,
-        storeName: p.store.name,
-        storeSlug: p.store.slug,
-      }));
-
-    const stores = new Map<string, { name: string; slug: string; color: string | null }>();
-    for (const p of allPrices) {
-      stores.set(p.store.slug, p.store);
-    }
-
-    const minPrice = priceValues.length > 0 ? Math.min(...priceValues) : null;
-    const maxPrice = priceValues.length > 0 ? Math.max(...priceValues) : null;
-
-    // Best unit price
-    const bestUnit = unitPrices.length > 0
-      ? unitPrices.reduce((best, curr) =>
-          curr.unitPrice < best.unitPrice ? curr : best
-        )
-      : null;
-
-    // Pick representative product: the one with the lowest price
-    const cheapestProduct = family.products.reduce((best, curr) => {
-      const bestPrice = best.prices[0] ? Number(best.prices[0].price) : Infinity;
-      const currPrice = curr.prices[0] ? Number(curr.prices[0].price) : Infinity;
-      return currPrice < bestPrice ? curr : best;
-    });
-
-    // Build a family display name (the base name without weight)
-    // Use the shortest product name as the family name
-    const familyName = family.products
-      .map((p) => p.name.replace(/\s+\d+(?:\.\d+)?(?:g|kg|ml|l|cl|pk|pack|ltr|litre|litres)\b/gi, "").trim())
-      .reduce((shortest, name) => name.length < shortest.length ? name : shortest);
-
-    // Check if any product is on sale
-    const hasOnSale = allPrices.some((p) => p.isOnSale);
-
-    return {
-      familySlug: family.familySlug,
-      familyName,
-      slug: cheapestProduct.slug, // link to cheapest variant
-      imageUrl: cheapestProduct.imageUrl || family.products.find((p) => p.imageUrl)?.imageUrl || null,
-      category: cheapestProduct.category,
-      brand: cheapestProduct.brand,
-      optionCount: allPrices.length,
-      productCount: family.products.length,
-      storeCount: stores.size,
-      stores: [...stores.values()],
-      minPrice,
-      maxPrice,
-      bestUnitPrice: bestUnit?.unitPrice ?? null,
-      bestUnitPriceUnit: bestUnit?.unitPriceUnit ?? null,
-      bestUnitStore: bestUnit?.storeName ?? null,
-      isOnSale: hasOnSale,
-    };
-  });
-
-  // Sort
-  if (sortBy === "price_asc") {
-    families.sort((a, b) => (a.minPrice ?? Infinity) - (b.minPrice ?? Infinity));
-  } else if (sortBy === "price_desc") {
-    families.sort((a, b) => (b.minPrice ?? 0) - (a.minPrice ?? 0));
-  } else {
-    // Default: sort by relevance (number of stores desc, then name)
-    families.sort((a, b) => {
-      if (a.storeCount !== b.storeCount) return b.storeCount - a.storeCount;
-      return a.familyName.localeCompare(b.familyName);
-    });
-  }
-
-  // Paginate
-  const total = families.length;
-  const totalPages = Math.ceil(total / limit);
-  const skip = (page - 1) * limit;
-  const paged = families.slice(skip, skip + limit);
+  const data = families.map((f) => ({
+    familySlug: f.family_slug,
+    familyName: f.family_name,
+    slug: f.slug,
+    imageUrl: f.image_url,
+    brand: f.brand,
+    optionCount: Number(f.option_count),
+    productCount: Number(f.product_count),
+    storeCount: Number(f.store_count),
+    stores: storesByFamily.get(f.family_slug) ?? [],
+    minPrice: f.min_price != null ? Number(f.min_price) : null,
+    maxPrice: f.max_price != null ? Number(f.max_price) : null,
+    bestUnitPrice: f.best_unit_price != null ? Number(f.best_unit_price) : null,
+    bestUnitPriceUnit: f.best_unit_price_unit,
+    bestUnitStore: null,
+    isOnSale: f.is_on_sale,
+    cheapestProductId: f.cheapest_product_id,
+    cheapestProductSlug: f.cheapest_product_slug,
+    cheapestWeight: f.cheapest_weight != null ? Number(f.cheapest_weight) : null,
+    cheapestWeightUnit: f.cheapest_weight_unit,
+  }));
 
   return NextResponse.json({
-    data: paged,
+    data,
     total,
     page,
     limit,

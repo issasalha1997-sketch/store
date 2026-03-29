@@ -58,13 +58,13 @@ export function PriceComparison({ prices }: { prices: PriceEntry[] }) {
                       {entry.store.name}
                     </span>
                     {isCheapest && (
-                      <span className="inline-flex items-center gap-0.5 bg-emerald-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                      <span className="inline-flex items-center gap-0.5 bg-emerald-600 text-white text-[11px] font-bold px-1.5 py-0.5 rounded-full">
                         <Trophy className="h-2.5 w-2.5" />
                         BEST
                       </span>
                     )}
                     {entry.isOnSale && (
-                      <Badge className="bg-orange-100 text-orange-700 border-0 text-[9px] px-1.5 py-0">
+                      <Badge className="bg-orange-100 text-orange-700 border-0 text-[11px] px-1.5 py-0">
                         SALE
                       </Badge>
                     )}
@@ -92,7 +92,7 @@ export function PriceComparison({ prices }: { prices: PriceEntry[] }) {
                   </p>
                 )}
                 {!isCheapest && diff > 0.01 && (
-                  <p className="text-[10px] text-red-500 font-semibold tabular-nums">
+                  <p className="text-xs text-red-500 font-semibold tabular-nums">
                     +{formatPrice(diff)}
                   </p>
                 )}

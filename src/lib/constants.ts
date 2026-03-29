@@ -44,6 +44,7 @@ export const CATEGORIES = [
   { name: "Drinks", slug: "drinks", icon: "🥤" },
   { name: "Frozen", slug: "frozen", icon: "🧊" },
   { name: "Snacks & Sweets", slug: "snacks-sweets", icon: "🍫" },
+  { name: "Pantry & Cupboard", slug: "pantry-cupboard", icon: "🥫" },
   { name: "Household", slug: "household", icon: "🧹" },
   { name: "Personal Care", slug: "personal-care", icon: "🧴" },
   { name: "Baby", slug: "baby", icon: "👶" },

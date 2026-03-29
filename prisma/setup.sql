@@ -175,6 +175,7 @@ CREATE INDEX "Product_name_idx" ON "Product"("name");
 CREATE INDEX "Product_categoryId_idx" ON "Product"("categoryId");
 CREATE INDEX "Product_brand_idx" ON "Product"("brand");
 CREATE INDEX "Price_productId_storeId_idx" ON "Price"("productId", "storeId");
+CREATE INDEX "Price_productId_storeId_isLatest_idx" ON "Price"("productId", "storeId", "isLatest");
 CREATE INDEX "Price_scrapedAt_idx" ON "Price"("scrapedAt");
 CREATE INDEX "Price_isLatest_idx" ON "Price"("isLatest");
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");

@@ -112,6 +112,7 @@ export async function POST(request: NextRequest) {
       drinks: "drinks",
       frozen: "frozen",
       "snacks & sweets": "snacks-sweets",
+      "pantry & cupboard": "pantry-cupboard",
       household: "household",
       "personal care": "personal-care",
       baby: "baby",

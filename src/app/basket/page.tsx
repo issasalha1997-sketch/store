@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useBasket } from "@/hooks/useBasket";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -94,6 +94,8 @@ export default function BasketPage() {
     setPreferredStore,
     clearPreferredStore,
   } = useBasket();
+
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const { data: optimization, isLoading: optimizing } = useQuery({
     queryKey: [
@@ -241,15 +243,43 @@ export default function BasketPage() {
               Reset
             </Button>
           )}
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-lg"
-            onClick={clearBasket}
-          >
-            <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-            Clear All
-          </Button>
+          <div className="relative">
+            {showClearConfirm ? (
+              <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">
+                <span className="text-xs font-medium text-red-700">
+                  Clear all {items.length} item{items.length !== 1 ? "s" : ""}?
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs rounded-md"
+                  onClick={() => setShowClearConfirm(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  className="h-7 px-2 text-xs rounded-md bg-red-600 hover:bg-red-700 text-white"
+                  onClick={() => {
+                    clearBasket();
+                    setShowClearConfirm(false);
+                  }}
+                >
+                  Yes, clear
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-lg"
+                onClick={() => setShowClearConfirm(true)}
+              >
+                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                Clear All
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -294,7 +324,7 @@ export default function BasketPage() {
                       </div>
                     </div>
                     {optimization.singleStoreBest.missingItems.length > 0 && (
-                      <p className="mt-2 text-[10px] text-amber-600">
+                      <p className="mt-2 text-xs text-amber-600">
                         Missing:{" "}
                         {optimization.singleStoreBest.missingItems.join(", ")}
                       </p>
@@ -342,7 +372,7 @@ export default function BasketPage() {
                               <p className="text-xs font-medium">
                                 {sg.store.name}
                               </p>
-                              <p className="text-[10px] text-muted-foreground">
+                              <p className="text-xs text-muted-foreground">
                                 {sg.items.length} item
                                 {sg.items.length !== 1 ? "s" : ""}
                               </p>
@@ -446,7 +476,7 @@ export default function BasketPage() {
                                   name={store.name}
                                   size="sm"
                                 />
-                                <span className="text-[10px] font-medium leading-tight">
+                                <span className="text-xs font-medium leading-tight">
                                   {store.name.split(" ")[0]}
                                 </span>
                               </div>
@@ -513,12 +543,12 @@ export default function BasketPage() {
                                       {itemData.productName}
                                     </p>
                                     {basketItem.brand && (
-                                      <p className="text-[10px] text-muted-foreground">
+                                      <p className="text-xs text-muted-foreground">
                                         {basketItem.brand}
                                       </p>
                                     )}
                                     {basketItem.weight && basketItem.weightUnit && (
-                                      <p className="text-[10px] text-muted-foreground">
+                                      <p className="text-xs text-muted-foreground">
                                         {basketItem.weight}{basketItem.weightUnit}
                                       </p>
                                     )}
@@ -617,7 +647,7 @@ export default function BasketPage() {
                                           <Check className="absolute -top-1 -right-1 h-4 w-4 text-white rounded-full p-0.5 bg-teal-500" />
                                         )}
                                         {isCheapest && !isSelected && (
-                                          <span className="block text-[9px] text-teal-600 font-normal">
+                                          <span className="block text-[11px] text-teal-600 font-normal">
                                             cheapest
                                           </span>
                                         )}
@@ -639,7 +669,7 @@ export default function BasketPage() {
                                     : "---"}
                                 </span>
                                 {isOverridden && (
-                                  <span className="block text-[10px] text-amber-600 font-medium">
+                                  <span className="block text-xs text-amber-600 font-medium">
                                     override
                                   </span>
                                 )}
@@ -877,7 +907,7 @@ export default function BasketPage() {
                                         : "N/A"}
                                     </p>
                                     {isCheapest && storePrice && (
-                                      <p className="text-[8px] text-teal-600 font-medium">
+                                      <p className="text-[11px] text-teal-600 font-medium">
                                         best
                                       </p>
                                     )}
@@ -937,7 +967,7 @@ export default function BasketPage() {
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="flex items-center gap-4 sm:gap-6">
                           <div>
-                            <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">
+                            <p className="text-xs text-muted-foreground uppercase tracking-wide font-semibold">
                               Algorithm
                             </p>
                             <p className="text-lg font-bold text-teal-600 tabular-nums">
@@ -948,7 +978,7 @@ export default function BasketPage() {
                           </div>
                           <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
                           <div>
-                            <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">
+                            <p className="text-xs text-muted-foreground uppercase tracking-wide font-semibold">
                               Your Choice
                             </p>
                             <p className="text-lg font-bold tabular-nums">
@@ -984,7 +1014,7 @@ export default function BasketPage() {
                               saved
                             </Badge>
                           )}
-                          <p className="text-[10px] text-muted-foreground mt-1">
+                          <p className="text-xs text-muted-foreground mt-1">
                             {overrideCount} override
                             {overrideCount !== 1 ? "s" : ""}
                           </p>

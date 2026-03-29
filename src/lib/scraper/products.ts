@@ -881,6 +881,7 @@ export const CATEGORY_MAP: Record<string, string> = {
   "drinks": "drinks",
   "frozen": "frozen",
   "snacks & sweets": "snacks-sweets",
+  "pantry & cupboard": "pantry-cupboard",
   "household": "household",
   "personal care": "personal-care",
   "baby": "baby",
