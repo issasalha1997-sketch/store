@@ -363,36 +363,47 @@ export default function ProductDetailPage() {
 
             // Group members by approximate weight (±20% tolerance)
             const groups: { label: string; sortWeight: number; items: FamilyMember[] }[] = [];
-            const sorted = [...members].sort((a, b) => toGrams(a.weight, a.weightUnit) - toGrams(b.weight, b.weightUnit));
+            // Filter out current product's entries (already in Price Comparison)
+            const others = [...members].filter(m => m.slug !== product.slug);
+            if (others.length === 0) return null;
+
+            const sorted = others.sort((a, b) => toGrams(a.weight, a.weightUnit) - toGrams(b.weight, b.weightUnit));
 
             for (const m of sorted) {
               const grams = toGrams(m.weight, m.weightUnit);
-              // Find an existing group within 20% tolerance
-              const existingGroup = groups.find(g => {
+              // Find an existing group within 20% tolerance (only for items that have weight)
+              const existingGroup = grams > 0 ? groups.find(g => {
+                if (g.sortWeight === 0) return false;
                 const diff = Math.abs(grams - g.sortWeight) / Math.max(g.sortWeight, 1);
                 return diff < 0.2;
-              });
+              }) : null;
               if (existingGroup) {
                 existingGroup.items.push(m);
               } else {
-                // Create label for the weight
-                let label = "Other";
+                // Create a readable label
+                let label: string;
                 if (m.weight && m.weightUnit) {
-                  label = `${m.weight}${m.weightUnit}`;
+                  const w = m.weight;
+                  const u = m.weightUnit.toLowerCase();
+                  // Convert decimals: 0.5kg → 500g, 0.75l → 750ml
+                  if (u === "kg" && w < 1) label = `${Math.round(w * 1000)}g`;
+                  else if (u === "l" && w < 1) label = `${Math.round(w * 1000)}ml`;
+                  else label = `${w}${u}`;
                 } else {
-                  // Extract from name
+                  // Try extracting from name
                   const wMatch = m.name.match(/(\d+(?:\.\d+)?)\s*(g|kg|ml|l|cl|pk|pack)/i);
-                  if (wMatch) label = `${wMatch[1]}${wMatch[2]}`;
+                  if (wMatch) {
+                    label = `${wMatch[1]}${wMatch[2].toLowerCase()}`;
+                  } else {
+                    // No weight at all — use a short version of the product name
+                    label = m.name;
+                  }
                 }
                 groups.push({ label, sortWeight: grams || 999999, items: [m] });
               }
             }
 
-            // Only show if there are actually different size groups
-            if (groups.length <= 1 && groups[0]?.items.length === members.length) {
-              // All same size — already shown in Price Comparison above
-              return null;
-            }
+            if (groups.length === 0) return null;
 
             return (
               <Card className="mt-8 border-0 shadow-sm">
