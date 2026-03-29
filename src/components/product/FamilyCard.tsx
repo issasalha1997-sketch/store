@@ -192,7 +192,7 @@ export function FamilyCard({
                 {/* Add to basket button */}
                 <button
                   onClick={handleAddToBasket}
-                  className={`flex-shrink-0 h-7 w-7 rounded-full flex items-center justify-center transition-all duration-200 ${
+                  className={`flex-shrink-0 h-9 w-9 rounded-full flex items-center justify-center transition-all duration-200 ${
                     justAdded
                       ? "bg-emerald-500 text-white scale-110"
                       : "bg-teal-50 text-teal-600 hover:bg-teal-100 hover:scale-110 active:scale-95"

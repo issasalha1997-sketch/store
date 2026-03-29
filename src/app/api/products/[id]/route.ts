@@ -36,7 +36,16 @@ export async function GET(
           orderBy: { price: "asc" },
         },
         reviews: {
-          select: { rating: true },
+          select: {
+            id: true,
+            rating: true,
+            title: true,
+            body: true,
+            createdAt: true,
+            user: { select: { name: true } },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 20,
         },
       },
     });
@@ -81,8 +90,8 @@ export async function GET(
       orderBy: { scrapedAt: "asc" },
     });
 
-    // Remove raw reviews array from response and build clean object
-    const { reviews: _reviews, ...productData } = product;
+    // Separate reviews for the computed fields, keep them in response
+    const { reviews, ...productData } = product;
 
     // Fetch family members — same product in different sizes across stores
     let familyMembers: Array<{
@@ -180,6 +189,7 @@ export async function GET(
       })),
       averageRating: averageRating ? Math.round(averageRating * 10) / 10 : null,
       reviewCount,
+      reviews,
       priceHistory: priceHistory.map((p) => ({
         price: Number(p.price),
         originalPrice: p.originalPrice ? Number(p.originalPrice) : null,

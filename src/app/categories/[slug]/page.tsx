@@ -82,6 +82,10 @@ export default function CategoryPage() {
               bestUnitPriceUnit={item.bestUnitPriceUnit as string | null}
               bestUnitStore={item.bestUnitStore as string | null}
               isOnSale={item.isOnSale as boolean}
+              cheapestProductId={item.cheapestProductId as string | undefined}
+              cheapestProductSlug={item.cheapestProductSlug as string | undefined}
+              weight={item.cheapestWeight as number | null}
+              weightUnit={item.cheapestWeightUnit as string | null}
             />
           ))}
         </div>

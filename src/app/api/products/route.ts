@@ -356,6 +356,7 @@ async function handleFamilyGrouped(
       bool_or(pr."isOnSale") as is_on_sale,
       MIN(pr."unitPrice"::numeric) as best_unit_price,
       (ARRAY_AGG(pr."unitPriceUnit" ORDER BY pr."unitPrice" ASC NULLS LAST))[1] as best_unit_price_unit,
+      (ARRAY_AGG(s.name ORDER BY pr."unitPrice" ASC NULLS LAST))[1] as best_unit_store,
       (ARRAY_AGG(p.id ORDER BY pr.price ASC))[1] as cheapest_product_id,
       (ARRAY_AGG(p.slug ORDER BY pr.price ASC))[1] as cheapest_product_slug,
       (ARRAY_AGG(p.weight ORDER BY pr.price ASC))[1] as cheapest_weight,
@@ -390,6 +391,7 @@ async function handleFamilyGrouped(
         is_on_sale: boolean;
         best_unit_price: number | null;
         best_unit_price_unit: string | null;
+        best_unit_store: string | null;
         cheapest_product_id: string | null;
         cheapest_product_slug: string | null;
         cheapest_weight: number | null;
@@ -457,7 +459,7 @@ async function handleFamilyGrouped(
     maxPrice: f.max_price != null ? Number(f.max_price) : null,
     bestUnitPrice: f.best_unit_price != null ? Number(f.best_unit_price) : null,
     bestUnitPriceUnit: f.best_unit_price_unit,
-    bestUnitStore: null,
+    bestUnitStore: f.best_unit_store,
     isOnSale: f.is_on_sale,
     cheapestProductId: f.cheapest_product_id,
     cheapestProductSlug: f.cheapest_product_slug,
