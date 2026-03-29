@@ -2,6 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
+import Image from "next/image";
 import { PriceComparison } from "@/components/product/PriceComparison";
 import { StarRating } from "@/components/shared/StarRating";
 import { Button } from "@/components/ui/button";
@@ -9,29 +10,12 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { ShoppingCart, ArrowLeft, Check, TrendingDown, Tag } from "lucide-react";
+import { ShoppingCart, ArrowLeft, Check, Tag, ImageOff, Clock } from "lucide-react";
 import { useBasket } from "@/hooks/useBasket";
 import { formatPrice } from "@/lib/utils";
 import Link from "next/link";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-
-const getEmoji = (name: string) => {
-  if (name.includes("Milk")) return "\uD83E\uDD5B";
-  if (name.includes("Butter")) return "\uD83E\uDDC8";
-  if (name.includes("Egg")) return "\uD83E\uDD5A";
-  if (name.includes("Chicken")) return "\uD83C\uDF57";
-  if (name.includes("Beef") || name.includes("Mince")) return "\uD83E\uDD69";
-  if (name.includes("Bread") || name.includes("Pan") || name.includes("Sourdough")) return "\uD83C\uDF5E";
-  if (name.includes("Banana")) return "\uD83C\uDF4C";
-  if (name.includes("Broccoli")) return "\uD83E\uDD66";
-  if (name.includes("Potato")) return "\uD83E\uDD54";
-  if (name.includes("Tea") || name.includes("Coffee")) return "\u2615";
-  if (name.includes("Cheese")) return "\uD83E\uDDC0";
-  if (name.includes("Salmon") || name.includes("Fish")) return "\uD83C\uDF1F";
-  if (name.includes("Bacon") || name.includes("Sausage")) return "\uD83E\uDD53";
-  return "\uD83D\uDED2";
-};
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -39,6 +23,7 @@ export default function ProductDetailPage() {
   const addItem = useBasket((s) => s.addItem);
   const [quantity, setQuantity] = useState(1);
   const [justAdded, setJustAdded] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   const { data: product, isLoading } = useQuery({
     queryKey: ["product", slug],
@@ -153,14 +138,27 @@ export default function ProductDetailPage() {
         {/* Left - Product Image */}
         <div>
           <motion.div
-            className="flex h-64 sm:h-80 items-center justify-center rounded-2xl bg-gradient-to-br from-muted/50 to-muted relative overflow-hidden"
+            className="flex h-64 sm:h-80 items-center justify-center rounded-2xl bg-gradient-to-br from-muted/30 to-muted/60 relative overflow-hidden"
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.4 }}
           >
-            <span className="text-7xl sm:text-8xl select-none">
-              {getEmoji(product.name)}
-            </span>
+            {product.imageUrl && !imgError ? (
+              <Image
+                src={product.imageUrl}
+                alt={product.name}
+                width={320}
+                height={320}
+                className="object-contain h-full w-auto p-4"
+                onError={() => setImgError(true)}
+                unoptimized
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center text-muted-foreground/40">
+                <ImageOff className="h-16 w-16" />
+                <span className="text-sm mt-2">No image available</span>
+              </div>
+            )}
             {/* Sale badge */}
             {prices.some((p: { isOnSale: boolean }) => p.isOnSale) && (
               <div className="absolute top-4 left-4">
@@ -250,6 +248,28 @@ export default function ProductDetailPage() {
 
           {/* Price Comparison */}
           <PriceComparison prices={prices} />
+
+          {/* Price freshness */}
+          {prices.length > 0 && prices[0].scrapedAt && (
+            <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Clock className="h-3 w-3" />
+              <span>
+                Prices last updated{" "}
+                {(() => {
+                  const latest = prices
+                    .map((p: { scrapedAt?: string }) => p.scrapedAt ? new Date(p.scrapedAt).getTime() : 0)
+                    .reduce((a: number, b: number) => Math.max(a, b), 0);
+                  if (!latest) return "recently";
+                  const diff = Date.now() - latest;
+                  const hours = Math.floor(diff / 3600000);
+                  const days = Math.floor(diff / 86400000);
+                  if (days > 0) return `${days} day${days > 1 ? "s" : ""} ago`;
+                  if (hours > 0) return `${hours} hour${hours > 1 ? "s" : ""} ago`;
+                  return "just now";
+                })()}
+              </span>
+            </div>
+          )}
 
           <Separator className="my-5" />
 

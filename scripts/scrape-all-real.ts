@@ -14,6 +14,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { canonicalProductName, productMatchSlug } from "../src/lib/scraper/matcher";
 import { CATEGORY_MAP } from "../src/lib/scraper/products";
 import { scrapeAldiLive } from "../src/lib/scraper/aldi";
+import { scrapeTescoLive } from "../src/lib/scraper/tesco";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
@@ -302,6 +303,35 @@ async function main() {
       console.log(`  → ${imported} new prices (from ${products.length} scraped)`);
     } else {
       console.log("  Store 'aldi' not found in DB");
+    }
+  }
+
+  if (!arg || arg === "tesco") {
+    console.log("Tesco (HTML scraper):");
+    const store = await prisma.store.findUnique({ where: { slug: "tesco" } });
+    if (store) {
+      const products = await scrapeTescoLive(200);
+      let imported = 0;
+      for (const p of products) {
+        if (p.price <= 0 || !p.name || p.name.length < 3) continue;
+        try {
+          const ok = await upsertProduct(store.id, p.name, p.price, p.category || "snacks & sweets", {
+            imageUrl: p.imageUrl,
+            brand: p.brand,
+            unitPrice: p.unitPrice,
+            unitPriceUnit: p.unitPriceUnit,
+            description: p.description,
+            weight: p.weight,
+            weightUnit: p.weightUnit,
+          });
+          if (ok) imported++;
+        } catch {
+          // Skip individual errors
+        }
+      }
+      console.log(`  → ${imported} new prices (from ${products.length} scraped)`);
+    } else {
+      console.log("  Store 'tesco' not found in DB");
     }
   }
 

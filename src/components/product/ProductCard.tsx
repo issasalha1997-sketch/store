@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, TrendingDown, Check } from "lucide-react";
+import { ShoppingCart, TrendingDown, Check, ImageOff } from "lucide-react";
 import { StoreLogo } from "@/components/shared/StoreLogo";
 import { formatPrice } from "@/lib/utils";
 import { useBasket } from "@/hooks/useBasket";
@@ -27,33 +28,12 @@ interface ProductCardProps {
   priceCount?: number;
 }
 
-const getEmoji = (name: string) => {
-  if (name.includes("Milk")) return "\uD83E\uDD5B";
-  if (name.includes("Butter")) return "\uD83E\uDDC8";
-  if (name.includes("Egg")) return "\uD83E\uDD5A";
-  if (name.includes("Chicken")) return "\uD83C\uDF57";
-  if (name.includes("Beef") || name.includes("Mince")) return "\uD83E\uDD69";
-  if (name.includes("Bread") || name.includes("Pan") || name.includes("Sourdough")) return "\uD83C\uDF5E";
-  if (name.includes("Banana")) return "\uD83C\uDF4C";
-  if (name.includes("Broccoli")) return "\uD83E\uDD66";
-  if (name.includes("Potato")) return "\uD83E\uDD54";
-  if (name.includes("Tea") || name.includes("Coffee")) return "\u2615";
-  if (name.includes("Coca-Cola") || name.includes("Juice") || name.includes("Water")) return "\uD83E\uDDC3";
-  if (name.includes("Pizza")) return "\uD83C\uDF55";
-  if (name.includes("Chocolate") || name.includes("Cadbury")) return "\uD83C\uDF6B";
-  if (name.includes("Cheese")) return "\uD83E\uDDC0";
-  if (name.includes("Salmon") || name.includes("Fish")) return "\uD83C\uDF1F";
-  if (name.includes("Bacon") || name.includes("Sausage")) return "\uD83E\uDD53";
-  if (name.includes("Yoghurt") || name.includes("Yogurt")) return "\uD83E\uDD5B";
-  if (name.includes("Croissant")) return "\uD83E\uDD50";
-  return "\uD83D\uDED2";
-};
-
 export function ProductCard({
   id,
   name,
   slug,
   brand,
+  imageUrl,
   weight,
   weightUnit,
   minPrice,
@@ -64,6 +44,7 @@ export function ProductCard({
 }: ProductCardProps) {
   const addItem = useBasket((s) => s.addItem);
   const [justAdded, setJustAdded] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   const handleAddToBasket = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -73,7 +54,7 @@ export function ProductCard({
       productName: name,
       productSlug: slug,
       brand,
-      imageUrl: null,
+      imageUrl,
       weight,
       weightUnit,
     });
@@ -98,15 +79,23 @@ export function ProductCard({
         )}
 
         <CardContent className="p-4">
-          {/* Product image placeholder */}
-          <div className="mb-3 flex h-28 sm:h-32 items-center justify-center rounded-xl bg-gradient-to-br from-muted/50 to-muted relative overflow-hidden group-hover:from-teal-50/50 group-hover:to-emerald-50/50 transition-colors duration-300">
-            <motion.span
-              className="text-5xl select-none"
-              whileHover={{ scale: 1.15 }}
-              transition={{ type: "spring", bounce: 0.5 }}
-            >
-              {getEmoji(name)}
-            </motion.span>
+          {/* Product image */}
+          <div className="mb-3 flex h-28 sm:h-32 items-center justify-center rounded-xl bg-gradient-to-br from-muted/30 to-muted/60 relative overflow-hidden group-hover:from-teal-50/50 group-hover:to-emerald-50/50 transition-colors duration-300">
+            {imageUrl && !imgError ? (
+              <Image
+                src={imageUrl}
+                alt={name}
+                width={160}
+                height={160}
+                className="object-contain h-full w-auto p-2 transition-transform duration-300 group-hover:scale-110"
+                onError={() => setImgError(true)}
+                unoptimized
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center text-muted-foreground/40">
+                <ImageOff className="h-8 w-8" />
+              </div>
+            )}
           </div>
 
           {/* Product info */}

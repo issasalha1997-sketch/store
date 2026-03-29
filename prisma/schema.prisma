@@ -218,3 +218,54 @@ model ScrapeRun {
 
   @@index([storeSlug, startedAt])
 }
+
+// ─── SCRAPER STAGING ─────────────────────────────────
+// Scraped data lands here first. Admin reviews and approves
+// before it goes live into Product/Price tables.
+
+model StagedProduct {
+  id            String   @id @default(cuid())
+  batchId       String   // Groups all products from a single scrape run
+  storeSlug     String
+  rawName       String   // Original name from scraper
+  matchSlug     String   // Generated slug for matching
+  canonName     String   // Normalized canonical name
+  price         Decimal  @db.Decimal(10, 2)
+  originalPrice Decimal? @db.Decimal(10, 2)
+  isOnSale      Boolean  @default(false)
+  unitPrice     Decimal? @db.Decimal(10, 4)
+  unitPriceUnit String?
+  brand         String?
+  category      String?  // Category slug
+  imageUrl      String?
+  weight        Float?
+  weightUnit    String?
+  barcode       String?
+  description   String?  @db.Text
+  sourceUrl     String?
+
+  // Matching status
+  existingProductId String?   // ID of matched existing product (null = new product)
+  priceChange       Float?    // Price difference vs current (negative = cheaper)
+  status            String    @default("pending") // pending, approved, rejected, applied
+  createdAt         DateTime  @default(now())
+
+  @@index([batchId])
+  @@index([storeSlug])
+  @@index([status])
+  @@index([matchSlug])
+}
+
+model StagedBatch {
+  id            String    @id @default(cuid())
+  storeSlug     String
+  totalProducts Int       @default(0)
+  newProducts   Int       @default(0)
+  priceChanges  Int       @default(0)
+  unchanged     Int       @default(0)
+  status        String    @default("pending") // pending, approved, rejected, applied
+  createdAt     DateTime  @default(now())
+  appliedAt     DateTime?
+
+  @@index([status])
+}

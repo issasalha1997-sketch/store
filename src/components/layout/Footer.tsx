@@ -88,20 +88,24 @@ export function Footer() {
               About
             </h3>
             <ul className="space-y-2.5 text-sm">
-              {[
-                { href: "/about", label: "How It Works" },
-                { href: "/privacy", label: "Privacy Policy" },
-                { href: "/terms", label: "Terms of Service" },
-              ].map((link) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
+              <li>
+                <Link
+                  href="/#how-it-works"
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  How It Works
+                </Link>
+              </li>
+              <li>
+                <span className="text-muted-foreground/50">
+                  Privacy Policy
+                </span>
+              </li>
+              <li>
+                <span className="text-muted-foreground/50">
+                  Terms of Service
+                </span>
+              </li>
             </ul>
           </div>
         </div>
