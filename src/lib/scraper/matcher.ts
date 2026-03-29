@@ -181,13 +181,28 @@ function normalizeProductVariations(name: string): string {
     .replace(/\bwashing\s*(?:up\s*)?liquid\b/gi, "Washing Up Liquid")
     .replace(/\bdishwash(?:er|ing)?\s*tablets?\b/gi, "Dishwasher Tablets")
     .replace(/\blaundry\s*(?:detergent|liquid|capsules?)\b/gi, "Laundry Detergent")
-    .replace(/\bfabric\s*(?:conditioner|softener)\b/gi, "Fabric Conditioner");
+    .replace(/\bfabric\s*(?:conditioner|softener)\b/gi, "Fabric Conditioner")
+    // Spelling normalization
+    .replace(/\bbeanz\b/gi, "Beans");
 
   // Remove filler words that differ between stores
   n = n
     .replace(/\b(?:premium|finest|selected?|quality|value|essential)\b/gi, "")
     .replace(/\b(?:ireland|irish|from\s+ireland)\b/gi, "")
-    .replace(/\b(?:approx\.?|approximately)\b/gi, "");
+    .replace(/\b(?:approx\.?|approximately)\b/gi, "")
+    // Strip baby food age markers: "6+ Months", "7 Months+", etc.
+    .replace(/\b\d+\+?\s*months?\+?\b/gi, "")
+    // Strip "in tomato sauce", "in brine", etc. — stores add these inconsistently
+    .replace(/\bin\s+(?:tomato\s+sauce|brine|water|oil|juice|syrup|gravy|jelly)\b/gi, "");
+
+  // Strip store-specific container/descriptor suffixes from the END of the name
+  // These are words stores append differently (e.g. "Coca-Cola Zero Sugar Bottle" vs "Coca-Cola Zero Sugar Soft Drink")
+  // Applied repeatedly to peel off multiple trailing filler words
+  let prev = "";
+  while (prev !== n) {
+    prev = n;
+    n = n.replace(/\s+(?:bottle|bottles|can|cans|carton|pouch|tub|pot|jar|tin|bag|sachet|sachets|tube|box|soft\s+drink|soft\s+drinks|drink|beverage|bars?|original|classic|regular|standard|multipack|multi\s+pack|family\s+pack|value\s+pack|sharing|share|ready\s+to\s+eat|ready\s+to\s+drink|ready\s+meal|prepared|pre-packed|portion|portions|serving|servings|slices?|pieces?)\s*$/gi, "");
+  }
 
   return n;
 }
@@ -345,11 +360,27 @@ export function productFamilySlug(
     .replace(/\s+/g, " ")
     .trim();
 
-  // To slug
+  // Strip store-specific container/descriptor suffixes from the END of the name
+  // These are words stores append differently (e.g. "Coca-Cola Zero Sugar Bottle" vs "Coca-Cola Zero Sugar Soft Drink")
+  // Applied repeatedly to peel off multiple trailing filler words
+  let prev = "";
+  while (prev !== clean) {
+    prev = clean;
+    clean = clean.replace(/\s+(?:bottle|bottles|can|cans|carton|pouch|tub|pot|jar|tin|bag|sachet|sachets|tube|box|soft\s+drink|soft\s+drinks|drink|beverage|bars?|original|classic|regular|standard|multipack|multi\s+pack|family\s+pack|value\s+pack|sharing|share|ready\s+to\s+eat|ready\s+to\s+drink|ready\s+meal|prepared|pre-packed|portion|portions|serving|servings|slices?|pieces?)\s*$/gi, "");
+  }
+  clean = clean.trim();
+
+  // Normalize & to "and" before slugging so "Salt & Vinegar" matches "Salt And Vinegar"
+  clean = clean.replace(/\s*&\s*/g, " and ");
+
+  // To slug — then strip connector words so "Tomato and Basil" = "Tomato Basil"
+  // Stores use these inconsistently: "Salt & Vinegar" vs "Salt and Vinegar" vs "Salt Vinegar"
   return clean
     .toLowerCase()
     .replace(/['']/g, "")
     .replace(/[^a-z0-9]+/g, "-")
+    .replace(/-(?:and|with|in|of|the|for|a|an|by|on|to|from|de|au|la|le|al)-/g, "-")
+    .replace(/--+/g, "-")
     .replace(/^-+|-+$/g, "");
 }
 

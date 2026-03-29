@@ -76,15 +76,24 @@ export async function GET(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();
-    const { id, ...updates } = body;
+    const { id } = body;
 
     if (!id) {
       return NextResponse.json({ error: "Product id required" }, { status: 400 });
     }
 
+    // Whitelist allowed fields to prevent mass-assignment attacks
+    const allowedFields = ['name', 'brand', 'description', 'weight', 'weightUnit', 'imageUrl', 'categoryId', 'isActive'];
+    const updates: Record<string, unknown> = {};
+    for (const field of allowedFields) {
+      if (body[field] !== undefined) {
+        updates[field] = body[field];
+      }
+    }
+
     // Generate new slug if name changed
     if (updates.name) {
-      updates.slug = updates.name
+      updates.slug = (updates.name as string)
         .toLowerCase()
         .replace(/['']/g, "")
         .replace(/[^a-z0-9]+/g, "-")

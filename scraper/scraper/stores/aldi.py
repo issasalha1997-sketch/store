@@ -209,20 +209,105 @@ class AldiScraper(BaseScraper):
 
     @staticmethod
     def _guess_category(name: str) -> str:
-        """Guess category from product name keywords."""
+        """Guess category from product name keywords.
+
+        Order matters: more specific checks first, broader ones later.
+        The fallback is 'pantry & cupboard' (not 'household') since most
+        Aldi scraped items are food.
+        """
+        import re
         name_lower = name.lower()
-        if any(w in name_lower for w in ["milk", "cheese", "yoghurt", "butter", "cream", "egg"]):
-            return "dairy & eggs"
-        if any(w in name_lower for w in ["chicken", "beef", "pork", "lamb", "meat", "sausage", "bacon", "mince"]):
+
+        def has(words):
+            """Check if any word/phrase appears in the product name."""
+            return any(w in name_lower for w in words)
+
+        def has_word(words):
+            """Check if any word appears as a whole word (word boundary)."""
+            return any(re.search(rf"\b{re.escape(w)}\b", name_lower) for w in words)
+
+        # ── Non-food first (most specific) ──
+        if has(["dog food", "cat food", "pet food", "cat litter", "dog treat",
+                "cat treat", "puppy food", "kitten food", "pet care", "flea treatment"]):
+            return "household"
+
+        if has(["razor", "shaving", "shampoo", "conditioner", "shower gel",
+                "deodorant", "toothpaste", "toothbrush", "mouthwash", "dental",
+                "body wash", "moisturiser", "moisturizer", "face cream", "hand cream",
+                "sun cream", "sunscreen", "makeup", "lipstick", "mascara",
+                "foundation", "perfume", "aftershave", "antiperspirant",
+                "hair dye", "hair colour", "nail polish"]):
+            return "personal care"
+
+        if has(["detergent", "washing liquid", "washing powder", "washing tablet",
+                "fabric softener", "cleaning spray", "bleach", "disinfectant",
+                "floor cleaner", "toilet cleaner", "dish soap", "dishwasher",
+                "stain remover", "air freshener", "sponge", "cleaning cloth"]):
+            return "household"
+
+        if has(["cable", "hdmi", "usb", "bike", "bicycle", "mattress", "drill",
+                "screwdriver", "lamp", "light bulb", "chair", "table", "blanket",
+                "duvet", "pillow", "towel", "curtain", "rug", "shelf", "bin bag",
+                "bin liner", "candle", "battery", "tool", "vacuum", "iron",
+                "garden", "planter", "mirror", "frame", "clock"]):
+            return "household"
+
+        # ── Food categories (more specific before broader) ──
+        if has(["chicken", "beef", "pork", "lamb", "meat", "sausage", "bacon",
+                "mince", "steak", "burger", "turkey", "ham", "salami",
+                "pepperoni", "chorizo", "prosciutto", "salmon", "cod", "prawn",
+                "haddock", "trout", "crab", "fish finger", "fish cake"]):
             return "meat & poultry"
-        if any(w in name_lower for w in ["apple", "banana", "orange", "potato", "onion", "tomato", "lettuce", "carrot"]):
-            return "fruits & vegetables"
-        if any(w in name_lower for w in ["bread", "roll", "croissant", "baguette"]):
-            return "bakery"
-        if any(w in name_lower for w in ["cola", "juice", "water", "tea", "coffee", "drink"]):
-            return "drinks"
-        if any(w in name_lower for w in ["frozen", "ice cream", "pizza"]):
+
+        if has(["frozen", "ice cream"]):
             return "frozen"
-        if any(w in name_lower for w in ["chocolate", "crisps", "biscuit", "sweet"]):
+
+        if has_word(["milk", "cheese", "yoghurt", "yogurt", "butter", "eggs",
+                     "egg", "cream cheese", "cottage cheese"]):
+            return "dairy & eggs"
+
+        if has(["apple", "banana", "orange", "potato", "onion", "tomato",
+                "lettuce", "carrot", "broccoli", "spinach", "cucumber",
+                "mushroom", "garlic", "cabbage", "cauliflower", "courgette",
+                "aubergine", "beetroot", "sweet potato", "parsnip", "celery",
+                "pepper", "avocado", "strawberry", "blueberry", "raspberry",
+                "grape", "mango", "pear", "peach", "lemon", "lime"]):
+            return "fruits & vegetables"
+
+        if has(["bread", "croissant", "baguette", "sourdough", "brioche",
+                "ciabatta", "pitta", "pita", "bagel", "scone", "muffin",
+                "cake", "pastry", "danish", "flatbread", "tortilla", "naan",
+                "wrap", "pancake", "waffle", "crumpet", "loaf"]):
+            return "bakery"
+
+        # "roll" is tricky (bread roll vs toilet roll) — only match if no
+        # household context
+        if has_word(["roll"]) and not has(["toilet", "kitchen", "foil"]):
+            return "bakery"
+
+        if has(["cola", "juice", "water", "lemonade", "squash", "cordial",
+                "energy drink", "smoothie", "lager", "beer", "wine", "cider",
+                "whiskey", "vodka", "gin", "rum", "cognac", "prosecco"]):
+            return "drinks"
+        if has_word(["tea", "coffee", "drink"]):
+            return "drinks"
+
+        if has(["chocolate", "crisps", "biscuit", "popcorn", "pretzel",
+                "cookie", "fudge", "toffee", "jelly", "gummy", "haribo",
+                "candy", "snack bar"]):
             return "snacks & sweets"
-        return "household"
+        if has_word(["sweet", "sweets"]):
+            return "snacks & sweets"
+
+        if has(["rice", "pasta", "noodle", "spaghetti", "cereal", "porridge",
+                "oats", "granola", "muesli", "flour", "sugar", "salt",
+                "sauce", "ketchup", "mustard", "mayonnaise", "vinegar",
+                "olive oil", "cooking oil", "beans", "chickpea", "lentil",
+                "soup", "jam", "honey", "peanut butter", "stock cube",
+                "gravy", "passata", "chopped tomato", "tomato puree",
+                "soy sauce", "couscous", "quinoa", "tinned", "canned",
+                "baking powder", "baking soda"]):
+            return "pantry & cupboard"
+
+        # ── Fallback: pantry & cupboard (most unmatched Aldi items are food) ──
+        return "pantry & cupboard"

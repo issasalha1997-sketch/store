@@ -152,6 +152,29 @@ class SuperValuScraper(BaseScraper):
 
         return products
 
+    @staticmethod
+    def _clean_doubled_measurement(name: str) -> str:
+        """Remove doubled measurement suffixes from product names.
+
+        SuperValu API sometimes returns names like:
+          'Andrex Complete Clean Toilet Roll 4 Roll 10.22m² 10.22m²'
+          'Heinz Baked Beans 4x415g 415g'
+        """
+        import re
+        # Remove trailing measurement that duplicates the one before it
+        cleaned = re.sub(
+            r'(\d+\.?\d*\s*(?:m²|ml|g|kg|l|cl|mm|cm|m)\b)\s+\1\s*$',
+            r'\1',
+            name,
+        )
+        # Remove trailing per-item size after multipack descriptor: "4x330ml 330ml" -> "4x330ml"
+        cleaned = re.sub(
+            r'(\d+\s*[xX]\s*(\d+\.?\d*)\s*(ml|g|kg|l|cl))\s+\2\s*\3\s*$',
+            r'\1',
+            cleaned,
+        )
+        return cleaned
+
     def _parse_api_product(
         self, item: dict, category: str
     ) -> ScrapedProduct | None:
@@ -159,6 +182,7 @@ class SuperValuScraper(BaseScraper):
         name = item.get("name") or item.get("title") or item.get("displayName")
         if not name:
             return None
+        name = self._clean_doubled_measurement(name)
 
         price = item.get("price") or item.get("salePrice") or item.get("currentPrice")
         if isinstance(price, str):

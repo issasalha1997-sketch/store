@@ -3,8 +3,49 @@ import { prisma } from "@/lib/db";
 import { searchParamsSchema } from "@/lib/validators";
 import type { Prisma } from "@prisma/client";
 
+// Simple in-memory rate limiter (per serverless instance)
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_MAX = 60;
+const RATE_LIMIT_WINDOW_MS = 60_000;
+
+function checkRateLimit(ip: string): { allowed: boolean; remaining: number; resetAt: number } {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+
+  if (!entry || now >= entry.resetAt) {
+    const resetAt = now + RATE_LIMIT_WINDOW_MS;
+    rateLimitMap.set(ip, { count: 1, resetAt });
+    return { allowed: true, remaining: RATE_LIMIT_MAX - 1, resetAt };
+  }
+
+  entry.count++;
+  if (entry.count > RATE_LIMIT_MAX) {
+    return { allowed: false, remaining: 0, resetAt: entry.resetAt };
+  }
+
+  return { allowed: true, remaining: RATE_LIMIT_MAX - entry.count, resetAt: entry.resetAt };
+}
+
 export async function GET(request: NextRequest) {
   try {
+    // Rate limiting by IP
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const rateLimit = checkRateLimit(ip);
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)),
+            "X-RateLimit-Limit": String(RATE_LIMIT_MAX),
+            "X-RateLimit-Remaining": "0",
+          },
+        }
+      );
+    }
+
     const { searchParams } = request.nextUrl;
     const groupByFamily = searchParams.get("group") === "family";
 
@@ -22,7 +63,7 @@ export async function GET(request: NextRequest) {
 
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "Invalid query parameters", details: parsed.error.flatten() },
+        { error: "Invalid query parameters" },
         { status: 400 }
       );
     }
