@@ -90,11 +90,76 @@ interface TescoProduct {
 }
 
 /**
+ * Parse Clubcard/promotion prices from PromotionType objects in the HTML.
+ * Returns a map of promotion ID → { clubcardPrice, description, unitInfo }
+ */
+function extractPromotions(html: string): Map<string, { clubcardPrice: number | null; description: string; unitInfo: string | null }> {
+  const promos = new Map<string, { clubcardPrice: number | null; description: string; unitInfo: string | null }>();
+  const regex = /\{"__typename":"PromotionType","id":"(\d+)"[^}]*"description":"([^"]*)"[^}]*?"unitSellingInfo":("(?:[^"]*)"|\w+)/g;
+  let m;
+  while ((m = regex.exec(html)) !== null) {
+    const id = m[1];
+    const desc = m[2];
+    const unitRaw = m[3];
+
+    // Extract price from description like "€1.75 Clubcard Price" or "Any 4 for €5 Clubcard Price"
+    let clubcardPrice: number | null = null;
+    const priceMatch = desc.match(/€(\d+(?:\.\d+)?)\s/);
+    if (priceMatch) {
+      clubcardPrice = parseFloat(priceMatch[1]);
+    }
+
+    const unitInfo = unitRaw && unitRaw !== "null"
+      ? unitRaw.replace(/"/g, "").replace(/\\u002F/g, "/")
+      : null;
+
+    promos.set(id, { clubcardPrice, description: desc.replace(/\\u002F/g, "/"), unitInfo });
+  }
+  return promos;
+}
+
+/**
+ * Build a map of product ID → promotion info by finding promotion refs in product objects.
+ */
+function linkPromotionsToProducts(html: string, promos: Map<string, { clubcardPrice: number | null; description: string; unitInfo: string | null }>): Map<string, { clubcardPrice: number | null; description: string; unitInfo: string | null }> {
+  const productPromos = new Map<string, { clubcardPrice: number | null; description: string; unitInfo: string | null }>();
+
+  // Find promotion references inside product objects
+  // Pattern: "promotions":[{"__ref":"PromotionType:{\"id\":\"99171745\",\"description\":\"...\"}"}]
+  // These appear inside ProductType objects which we can identify by nearby "tpnc" fields
+  const refRegex = /PromotionType:\{\\"id\\":\\"(\d+)\\"/g;
+  let refMatch;
+  while ((refMatch = refRegex.exec(html)) !== null) {
+    const promoId = refMatch[1];
+    const promo = promos.get(promoId);
+    if (!promo) continue;
+
+    // Find the product ID by looking backwards for the tpnc field
+    const searchStart = Math.max(0, refMatch.index - 3000);
+    const context = html.substring(searchStart, refMatch.index);
+    const tpncMatch = context.match(/"tpnc":"(\d+)"/g);
+    if (tpncMatch) {
+      const lastTpnc = tpncMatch[tpncMatch.length - 1];
+      const idMatch = lastTpnc.match(/"tpnc":"(\d+)"/);
+      if (idMatch) {
+        productPromos.set(idMatch[1], promo);
+      }
+    }
+  }
+
+  return productPromos;
+}
+
+/**
  * Extract all products from Tesco HTML by finding embedded JSON product objects.
  */
 function extractProductsFromHtml(html: string, category: string): ScrapedProduct[] {
   const products: ScrapedProduct[] = [];
   const seen = new Set<string>();
+
+  // Extract promotions (Clubcard prices) first
+  const promos = extractPromotions(html);
+  const productPromos = linkPromotionsToProducts(html, promos);
 
   // Find all ProductType objects in the Apollo cache
   // Pattern: {"__typename":"ProductType","id":"...","isForSale":true,...}
@@ -149,9 +214,26 @@ function extractProductsFromHtml(html: string, category: string): ScrapedProduct
         if (weightUnit === "pk") weightUnit = "pack";
       }
 
+      // Check for Clubcard/promotion pricing
+      const promo = productPromos.get(product.tpnc || id);
+      let finalPrice = product.price.actual;
+      let originalPrice: number | undefined;
+      let isOnSale = false;
+      let promoDescription: string | undefined;
+
+      if (promo?.clubcardPrice && promo.clubcardPrice < product.price.actual) {
+        // Clubcard price is cheaper — use it as the main price
+        finalPrice = promo.clubcardPrice;
+        originalPrice = product.price.actual;
+        isOnSale = true;
+        promoDescription = promo.description;
+      }
+
       const scraped: ScrapedProduct = {
         name: product.title,
-        price: product.price.actual,
+        price: finalPrice,
+        originalPrice,
+        isOnSale,
         brand: product.brandName || undefined,
         category,
         imageUrl,
@@ -161,17 +243,8 @@ function extractProductsFromHtml(html: string, category: string): ScrapedProduct
         weightUnit,
         barcode: product.gtin || undefined,
         sourceUrl: `https://www.tesco.ie/groceries/en-IE/products/${product.tpnc || id}`,
+        description: promoDescription,
       };
-
-      // Detect promotions as sales
-      if (product.promotions && product.promotions.length > 0) {
-        scraped.isOnSale = true;
-        scraped.description = product.promotions
-          .map((p) => p.description)
-          .filter(Boolean)
-          .join("; ")
-          .slice(0, 500);
-      }
 
       products.push(scraped);
     } catch {
