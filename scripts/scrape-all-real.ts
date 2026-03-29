@@ -252,7 +252,7 @@ const SUPERVALU: StoreConfig = {
   slug: "supervalu",
   apiBase: "https://storefrontgateway.supervalu.ie/api",
   storeId: "1733", // Ranelagh, Dublin
-  maxPerCategory: 200,
+  maxPerCategory: 500,
   categories: [
     { id: "O100001", name: "Fruit & Vegetables", mapped: "fruits & vegetables" },
     { id: "O100010", name: "Bakery", mapped: "bakery" },
@@ -273,7 +273,7 @@ const DUNNES: StoreConfig = {
   slug: "dunnes",
   apiBase: "https://storefrontgateway.dunnesstoresgrocery.com/api",
   storeId: "258", // Beacon Court, Dublin 18
-  maxPerCategory: 200,
+  maxPerCategory: 500,
   categories: [
     { id: "50066", name: "Fresh Fruit", mapped: "fruits & vegetables" },
     { id: "47183", name: "Fresh Vegetables", mapped: "fruits & vegetables" },
