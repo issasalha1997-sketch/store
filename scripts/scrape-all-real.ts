@@ -55,6 +55,29 @@ async function fetchMi9Page(
   return res.json();
 }
 
+/** Strip HTML tags and decode entities */
+function stripHtml(html: string | undefined): string | undefined {
+  if (!html) return undefined;
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'")
+    .replace(/&#39;/g, "'")
+    .replace(/&#x2F;/g, "/")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/[ \t]+/g, " ")
+    .trim()
+    .slice(0, 500) || undefined;
+}
+
 async function upsertProduct(
   storeId: string,
   name: string,
@@ -68,6 +91,8 @@ async function upsertProduct(
     description?: string;
     weight?: number;
     weightUnit?: string;
+    originalPrice?: number;
+    isOnSale?: boolean;
   }
 ): Promise<boolean> {
   if (price <= 0 || !name || name.length < 3) return false;
@@ -81,6 +106,8 @@ async function upsertProduct(
   const catSlug = CATEGORY_MAP[category.toLowerCase() as keyof typeof CATEGORY_MAP];
   const categoryId = catSlug ? catMap.get(catSlug) : undefined;
 
+  const cleanDesc = stripHtml(extra?.description);
+
   const product = await prisma.product.upsert({
     where: { slug: matchSlug },
     create: {
@@ -89,7 +116,7 @@ async function upsertProduct(
       familySlug: famSlug,
       brand: extra?.brand || null,
       imageUrl: extra?.imageUrl || null,
-      description: extra?.description?.slice(0, 500) || null,
+      description: cleanDesc || null,
       weight: w || null,
       weightUnit: wu || null,
       categoryId: categoryId || null,
@@ -98,7 +125,7 @@ async function upsertProduct(
     update: {
       ...(extra?.imageUrl ? { imageUrl: extra.imageUrl } : {}),
       ...(extra?.brand ? { brand: extra.brand } : {}),
-      ...(extra?.description ? { description: extra.description.slice(0, 500) } : {}),
+      ...(cleanDesc ? { description: cleanDesc } : {}),
       familySlug: famSlug,
     },
   });
@@ -114,6 +141,8 @@ async function upsertProduct(
       productId: product.id,
       storeId,
       price,
+      originalPrice: extra?.originalPrice || null,
+      isOnSale: extra?.isOnSale || false,
       unitPrice: extra?.unitPrice || null,
       unitPriceUnit: extra?.unitPriceUnit || null,
       currency: "EUR",
@@ -157,6 +186,8 @@ function parseMi9Product(
       description: item.description || undefined,
       weight: item.unitOfSize?.size || undefined,
       weightUnit: item.unitOfSize?.abbreviation || undefined,
+      originalPrice: isOnSale ? item.priceNumeric : undefined,
+      isOnSale,
     },
   };
 }
@@ -297,6 +328,8 @@ async function main() {
             description: p.description,
             weight: p.weight,
             weightUnit: p.weightUnit,
+            originalPrice: p.originalPrice,
+            isOnSale: p.isOnSale,
           });
           if (ok) imported++;
         } catch {
@@ -326,6 +359,8 @@ async function main() {
             description: p.description,
             weight: p.weight,
             weightUnit: p.weightUnit,
+            originalPrice: p.originalPrice,
+            isOnSale: p.isOnSale,
           });
           if (ok) imported++;
         } catch {

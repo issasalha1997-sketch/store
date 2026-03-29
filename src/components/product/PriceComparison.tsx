@@ -1,8 +1,8 @@
 "use client";
 
-import { StoreLogo } from "@/components/shared/StoreLogo";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/utils";
+import { Trophy } from "lucide-react";
 
 interface PriceEntry {
   store: { name: string; slug: string; color: string | null };
@@ -23,60 +23,77 @@ export function PriceComparison({ prices }: { prices: PriceEntry[] }) {
 
   return (
     <div className="space-y-3">
-      <h3 className="text-lg font-semibold">Price Comparison</h3>
-      <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <h3 className="text-base font-bold text-neutral-900">Price Comparison</h3>
+        {sorted.length > 1 && (
+          <span className="text-[11px] text-neutral-400">
+            {sorted.length} stores compared
+          </span>
+        )}
+      </div>
+
+      <div className="space-y-1.5">
         {sorted.map((entry, index) => {
-          const isCheapest = index === 0;
-          const barWidth = range > 0 ? ((entry.price - cheapestPrice) / range) * 50 + 50 : 100;
+          const isCheapest = index === 0 && sorted.length > 1;
+          const diff = entry.price - cheapestPrice;
 
           return (
             <div
               key={entry.store.slug}
-              className={`flex items-center gap-3 rounded-lg border p-3 transition-colors ${
-                isCheapest ? "border-teal-200 bg-teal-50" : ""
+              className={`flex items-center gap-3 rounded-xl p-3 transition-all ${
+                isCheapest
+                  ? "bg-emerald-50 ring-1 ring-emerald-200"
+                  : "bg-neutral-50/80 hover:bg-neutral-50"
               }`}
             >
-              <StoreLogo slug={entry.store.slug} name={entry.store.name} size="md" />
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">{entry.store.name}</span>
-                  {isCheapest && (
-                    <Badge variant="success" className="text-[10px]">
-                      CHEAPEST
-                    </Badge>
-                  )}
-                  {entry.isOnSale && (
-                    <Badge variant="warning" className="text-[10px]">
-                      SALE
-                    </Badge>
+              {/* Store color bar + name */}
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                <div
+                  className="w-1 h-8 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: entry.store.color || "#999" }}
+                />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-semibold text-neutral-800 truncate">
+                      {entry.store.name}
+                    </span>
+                    {isCheapest && (
+                      <span className="inline-flex items-center gap-0.5 bg-emerald-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                        <Trophy className="h-2.5 w-2.5" />
+                        BEST
+                      </span>
+                    )}
+                    {entry.isOnSale && (
+                      <Badge className="bg-orange-100 text-orange-700 border-0 text-[9px] px-1.5 py-0">
+                        SALE
+                      </Badge>
+                    )}
+                  </div>
+                  {entry.unitPrice && entry.unitPriceUnit && (
+                    <p className="text-[11px] text-neutral-400 tabular-nums">
+                      {formatPrice(entry.unitPrice)}/{entry.unitPriceUnit}
+                    </p>
                   )}
                 </div>
-
-                {/* Price bar */}
-                <div className="mt-1.5 h-2 w-full rounded-full bg-muted overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all ${
-                      isCheapest ? "bg-teal-500" : "bg-muted-foreground/30"
-                    }`}
-                    style={{ width: `${barWidth}%` }}
-                  />
-                </div>
-
-                {entry.unitPrice && entry.unitPriceUnit && (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {formatPrice(entry.unitPrice)} {entry.unitPriceUnit}
-                  </p>
-                )}
               </div>
 
-              <div className="text-right">
-                <span className={`text-lg font-bold ${isCheapest ? "text-teal-600" : ""}`}>
+              {/* Price + diff */}
+              <div className="text-right flex-shrink-0">
+                <span
+                  className={`text-base font-extrabold tabular-nums ${
+                    isCheapest ? "text-emerald-700" : "text-neutral-800"
+                  }`}
+                >
                   {formatPrice(entry.price)}
                 </span>
                 {entry.isOnSale && entry.originalPrice && (
-                  <p className="text-xs text-muted-foreground line-through">
+                  <p className="text-[11px] text-neutral-400 line-through tabular-nums">
                     {formatPrice(entry.originalPrice)}
+                  </p>
+                )}
+                {!isCheapest && diff > 0.01 && (
+                  <p className="text-[10px] text-red-500 font-semibold tabular-nums">
+                    +{formatPrice(diff)}
                   </p>
                 )}
               </div>
@@ -85,11 +102,14 @@ export function PriceComparison({ prices }: { prices: PriceEntry[] }) {
         })}
       </div>
 
-      {range > 0 && (
-        <p className="text-sm text-muted-foreground text-center">
-          You save <span className="font-semibold text-teal-600">{formatPrice(range)}</span> by
-          buying from {sorted[0].store.name} instead of {sorted[sorted.length - 1].store.name}
-        </p>
+      {/* Savings summary */}
+      {range > 0.05 && (
+        <div className="flex items-center justify-center gap-2 bg-emerald-50 rounded-xl py-2.5 px-4">
+          <span className="text-sm text-emerald-800">
+            Save <span className="font-bold">{formatPrice(range)}</span> by choosing{" "}
+            <span className="font-semibold">{sorted[0].store.name}</span>
+          </span>
+        </div>
       )}
     </div>
   );

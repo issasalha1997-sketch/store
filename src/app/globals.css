@@ -62,6 +62,14 @@
   --color-brand-900: #134e4a;
   --color-coral: #f97316;
   --color-coral-light: #fff7ed;
+
+  /* Semantic colors for price comparison */
+  --color-savings: #16a34a;
+  --color-savings-bg: #f0fdf4;
+  --color-price-up: #dc2626;
+  --color-price-up-bg: #fef2f2;
+  --color-best-deal: #059669;
+  --color-best-deal-bg: #ecfdf5;
 }
 
 :root {
