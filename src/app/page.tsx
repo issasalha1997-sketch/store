@@ -83,7 +83,7 @@ export default function HomePage() {
             <motion.div variants={staggerItem}>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-100/80 px-4 py-1.5 text-sm font-medium text-teal-700 mb-6 border border-teal-200/50">
                 <Sparkles className="h-3.5 w-3.5" />
-                Compare 5 supermarkets instantly
+                Compare 4 supermarkets instantly
               </span>
             </motion.div>
 
@@ -103,7 +103,7 @@ export default function HomePage() {
               variants={staggerItem}
               className="mt-5 text-base sm:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed"
             >
-              Compare prices across Tesco, Dunnes, Lidl, Aldi and SuperValu.
+              Compare prices across Tesco, Dunnes, Aldi and SuperValu.
               Build your basket, and our algorithm finds the cheapest way to
               buy everything.
             </motion.p>
@@ -333,7 +333,7 @@ export default function HomePage() {
                 icon: Zap,
                 title: "Real-Time Prices",
                 description:
-                  "Prices updated daily from all 5 supermarkets so you always have accurate data.",
+                  "Prices updated daily from all 4 supermarkets so you always have accurate data.",
                 color: "text-amber-500",
                 bg: "bg-amber-50",
               },

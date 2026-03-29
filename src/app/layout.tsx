@@ -12,19 +12,19 @@ export const metadata: Metadata = {
     template: "%s | GrocerySaver",
   },
   description:
-    "Compare grocery prices across Tesco, Dunnes, Lidl, Aldi and SuperValu. Build your basket, find the cheapest store, and plan your shopping trip in Dublin.",
-  keywords: ["grocery", "price comparison", "Dublin", "Ireland", "Tesco", "Lidl", "Aldi", "Dunnes", "SuperValu"],
+    "Compare grocery prices across Tesco, Dunnes, Aldi and SuperValu. Build your basket, find the cheapest store, and plan your shopping trip in Dublin.",
+  keywords: ["grocery", "price comparison", "Dublin", "Ireland", "Tesco", "Aldi", "Dunnes", "SuperValu"],
   metadataBase: new URL(siteUrl),
   openGraph: {
     title: "GrocerySaver - Compare Grocery Prices in Dublin",
     description:
-      "Compare grocery prices across Tesco, Dunnes, Lidl, Aldi and SuperValu. Build your basket, find the cheapest store, and plan your shopping trip in Dublin.",
+      "Compare grocery prices across Tesco, Dunnes, Aldi and SuperValu. Build your basket, find the cheapest store, and plan your shopping trip in Dublin.",
     url: siteUrl,
     siteName: "GrocerySaver",
     type: "website",
     images: [
       {
-        url: "/og-image.png",
+        url: "/og-image.svg",
         width: 1200,
         height: 630,
         alt: "GrocerySaver - Compare grocery prices across Dublin supermarkets",
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "GrocerySaver - Compare Grocery Prices in Dublin",
     description:
-      "Compare grocery prices across Tesco, Dunnes, Lidl, Aldi and SuperValu. Build your basket, find the cheapest store, and plan your shopping trip in Dublin.",
+      "Compare grocery prices across Tesco, Dunnes, Aldi and SuperValu. Build your basket, find the cheapest store, and plan your shopping trip in Dublin.",
   },
 };
 
