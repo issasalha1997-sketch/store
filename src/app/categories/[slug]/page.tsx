@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ProductCard } from "@/components/product/ProductCard";
+import { FamilyCard } from "@/components/product/FamilyCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { CATEGORIES } from "@/lib/constants";
@@ -17,12 +17,12 @@ export default function CategoryPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["products", "category", slug],
     queryFn: async () => {
-      const res = await fetch(`/api/products?category=${slug}&limit=50`);
+      const res = await fetch(`/api/products?category=${slug}&limit=60&group=family`);
       return res.json();
     },
   });
 
-  const products = data?.data || [];
+  const results = data?.data || [];
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -40,13 +40,13 @@ export default function CategoryPage() {
             {category?.name || slug}
           </h1>
           <p className="text-muted-foreground">
-            {products.length} product{products.length !== 1 ? "s" : ""}
+            {results.length} product{results.length !== 1 ? "s" : ""}
           </p>
         </div>
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="rounded-xl border p-4">
               <Skeleton className="h-32 w-full rounded-lg" />
@@ -56,7 +56,7 @@ export default function CategoryPage() {
             </div>
           ))}
         </div>
-      ) : products.length === 0 ? (
+      ) : results.length === 0 ? (
         <div className="py-16 text-center">
           <p className="text-4xl mb-4">{category?.icon || "🔍"}</p>
           <h3 className="text-lg font-semibold">No products in this category yet</h3>
@@ -65,34 +65,23 @@ export default function CategoryPage() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {products.map((product: Record<string, unknown>) => (
-            <ProductCard
-              key={product.id as string}
-              id={product.id as string}
-              name={product.name as string}
-              slug={product.slug as string}
-              brand={product.brand as string | null}
-              imageUrl={product.imageUrl as string | null}
-              weight={product.weight as number | null}
-              weightUnit={product.weightUnit as string | null}
-              minPrice={product.minPrice as number}
-              maxPrice={product.maxPrice as number}
-              cheapestStore={
-                product.cheapestStore
-                  ? (
-                      product.cheapestStore as {
-                        store: { name: string; slug: string };
-                      }
-                    ).store
-                  : null
-              }
-              isOnSale={
-                !!(product.cheapestStore as { isOnSale?: boolean })
-                  ?.isOnSale
-              }
-              priceCount={product.priceCount as number}
-              category={null}
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+          {results.map((item: Record<string, unknown>) => (
+            <FamilyCard
+              key={item.familySlug as string}
+              familyName={item.familyName as string}
+              slug={item.slug as string}
+              imageUrl={item.imageUrl as string | null}
+              brand={item.brand as string | null}
+              optionCount={item.optionCount as number}
+              storeCount={item.storeCount as number}
+              stores={item.stores as Array<{ name: string; slug: string; color: string | null }>}
+              minPrice={item.minPrice as number}
+              maxPrice={item.maxPrice as number}
+              bestUnitPrice={item.bestUnitPrice as number | null}
+              bestUnitPriceUnit={item.bestUnitPriceUnit as string | null}
+              bestUnitStore={item.bestUnitStore as string | null}
+              isOnSale={item.isOnSale as boolean}
             />
           ))}
         </div>

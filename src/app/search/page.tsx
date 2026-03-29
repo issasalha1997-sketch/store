@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { SearchBar } from "@/components/search/SearchBar";
 import { ProductCard } from "@/components/product/ProductCard";
+import { FamilyCard } from "@/components/product/FamilyCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -29,13 +30,15 @@ function SearchContent() {
       if (categoryParam) params.set("category", categoryParam);
       params.set("sortBy", sortBy);
       params.set("page", String(page));
-      params.set("limit", "20");
+      params.set("limit", "24");
+      params.set("group", "family");
       const res = await fetch(`/api/products?${params}`);
       return res.json();
     },
   });
 
-  const products = data?.data || [];
+  const results = data?.data || [];
+  const isGrouped = data?.grouped === true;
   const total = data?.total || 0;
   const totalPages = data?.totalPages || 1;
 
@@ -57,7 +60,7 @@ function SearchContent() {
                 : "All Products"}
           </h1>
           <p className="text-sm text-muted-foreground">
-            {total} product{total !== 1 ? "s" : ""} found
+            {total} result{total !== 1 ? "s" : ""} found
           </p>
         </div>
 
@@ -180,7 +183,7 @@ function SearchContent() {
                 </div>
               ))}
             </div>
-          ) : products.length === 0 ? (
+          ) : results.length === 0 ? (
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -207,40 +210,51 @@ function SearchContent() {
                   animate: { transition: { staggerChildren: 0.04 } },
                 }}
               >
-                {products.map((product: Record<string, unknown>) => (
+                {results.map((item: Record<string, unknown>) => (
                   <motion.div
-                    key={product.id as string}
+                    key={(item.familySlug as string) || (item.id as string)}
                     variants={{
                       initial: { opacity: 0, y: 12 },
                       animate: { opacity: 1, y: 0 },
                     }}
                   >
-                    <ProductCard
-                      id={product.id as string}
-                      name={product.name as string}
-                      slug={product.slug as string}
-                      brand={product.brand as string | null}
-                      imageUrl={product.imageUrl as string | null}
-                      weight={product.weight as number | null}
-                      weightUnit={product.weightUnit as string | null}
-                      minPrice={product.minPrice as number}
-                      maxPrice={product.maxPrice as number}
-                      cheapestStore={
-                        product.cheapestStore
-                          ? (
-                              product.cheapestStore as {
-                                store: { name: string; slug: string };
-                              }
-                            ).store
-                          : null
-                      }
-                      isOnSale={
-                        !!(product.cheapestStore as { isOnSale?: boolean })
-                          ?.isOnSale
-                      }
-                      priceCount={product.priceCount as number}
-                      category={null}
-                    />
+                    {isGrouped ? (
+                      <FamilyCard
+                        familyName={item.familyName as string}
+                        slug={item.slug as string}
+                        imageUrl={item.imageUrl as string | null}
+                        brand={item.brand as string | null}
+                        optionCount={item.optionCount as number}
+                        storeCount={item.storeCount as number}
+                        stores={item.stores as Array<{ name: string; slug: string; color: string | null }>}
+                        minPrice={item.minPrice as number}
+                        maxPrice={item.maxPrice as number}
+                        bestUnitPrice={item.bestUnitPrice as number | null}
+                        bestUnitPriceUnit={item.bestUnitPriceUnit as string | null}
+                        bestUnitStore={item.bestUnitStore as string | null}
+                        isOnSale={item.isOnSale as boolean}
+                      />
+                    ) : (
+                      <ProductCard
+                        id={item.id as string}
+                        name={item.name as string}
+                        slug={item.slug as string}
+                        brand={item.brand as string | null}
+                        imageUrl={item.imageUrl as string | null}
+                        weight={item.weight as number | null}
+                        weightUnit={item.weightUnit as string | null}
+                        minPrice={item.minPrice as number}
+                        maxPrice={item.maxPrice as number}
+                        cheapestStore={
+                          item.cheapestStore
+                            ? (item.cheapestStore as { store: { name: string; slug: string } }).store
+                            : null
+                        }
+                        isOnSale={!!(item.cheapestStore as { isOnSale?: boolean })?.isOnSale}
+                        priceCount={item.priceCount as number}
+                        category={null}
+                      />
+                    )}
                   </motion.div>
                 ))}
               </motion.div>

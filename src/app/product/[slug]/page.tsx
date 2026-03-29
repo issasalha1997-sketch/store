@@ -488,6 +488,57 @@ export default function ProductDetailPage() {
           </Card>
         </motion.div>
       </div>
+
+      {/* Similar Products */}
+      {product.similarProducts && product.similarProducts.length > 0 && (
+        <div className="mt-10">
+          <h2 className="text-xl font-bold mb-4">Similar Products</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {product.similarProducts.map(
+              (sp: {
+                id: string;
+                name: string;
+                slug: string;
+                imageUrl: string | null;
+                minPrice: number | null;
+              }) => (
+                <Link
+                  key={sp.id}
+                  href={`/product/${sp.slug}`}
+                  className="group"
+                >
+                  <Card className="border-0 shadow-sm hover:shadow-md transition-shadow h-full">
+                    <CardContent className="p-3">
+                      <div className="h-20 sm:h-24 flex items-center justify-center rounded-lg bg-muted/30 mb-2 overflow-hidden">
+                        {sp.imageUrl ? (
+                          <Image
+                            src={sp.imageUrl}
+                            alt={sp.name}
+                            width={96}
+                            height={96}
+                            className="object-contain h-full w-auto p-1 group-hover:scale-110 transition-transform"
+                            unoptimized
+                          />
+                        ) : (
+                          <ImageOff className="h-6 w-6 text-muted-foreground/30" />
+                        )}
+                      </div>
+                      <p className="text-xs font-medium line-clamp-2 group-hover:text-teal-600 transition-colors">
+                        {sp.name}
+                      </p>
+                      {sp.minPrice && (
+                        <p className="text-sm font-bold text-teal-600 mt-1 tabular-nums">
+                          from {formatPrice(sp.minPrice)}
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </Link>
+              )
+            )}
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }

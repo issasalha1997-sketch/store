@@ -188,6 +188,7 @@ export async function GET(
         store: p.store,
       })),
       familyMembers: familyMembers.length > 1 ? familyMembers : [],
+      similarProducts: await getSimilarProducts(product.id, product.categoryId, product.familySlug),
     });
   } catch (error) {
     console.error("GET /api/products/[id] error:", error);
@@ -196,4 +197,72 @@ export async function GET(
       { status: 500 }
     );
   }
+}
+
+/**
+ * Get similar products from the same category but different family.
+ * Returns up to 8 product families to show as recommendations.
+ */
+async function getSimilarProducts(
+  productId: string,
+  categoryId: string | null,
+  familySlug: string | null
+) {
+  if (!categoryId) return [];
+
+  const similar = await prisma.product.findMany({
+    where: {
+      categoryId,
+      isActive: true,
+      id: { not: productId },
+      ...(familySlug ? { familySlug: { not: familySlug } } : {}),
+    },
+    include: {
+      prices: {
+        where: { isLatest: true },
+        include: {
+          store: { select: { name: true, slug: true, color: true } },
+        },
+        orderBy: { price: "asc" },
+        take: 1,
+      },
+    },
+    take: 100, // get more to group by family
+  });
+
+  // Group by familySlug, pick one representative per family
+  const familyMap = new Map<
+    string,
+    {
+      id: string;
+      name: string;
+      slug: string;
+      imageUrl: string | null;
+      familySlug: string;
+      minPrice: number | null;
+      storeCount: number;
+    }
+  >();
+
+  for (const p of similar) {
+    const fSlug = p.familySlug || p.slug;
+    if (familyMap.has(fSlug)) continue;
+
+    familyMap.set(fSlug, {
+      id: p.id,
+      name: p.name
+        .replace(
+          /\s+\d+(?:\.\d+)?(?:g|kg|ml|l|cl|pk|pack|ltr|litre|litres)\b/gi,
+          ""
+        )
+        .trim(),
+      slug: p.slug,
+      imageUrl: p.imageUrl,
+      familySlug: fSlug,
+      minPrice: p.prices[0] ? Number(p.prices[0].price) : null,
+      storeCount: p.prices.length,
+    });
+  }
+
+  return [...familyMap.values()].slice(0, 8);
 }
