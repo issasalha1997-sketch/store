@@ -215,8 +215,9 @@ async function scrapeStore(config: StoreConfig): Promise<number> {
       let skip = 0;
       let fetched = 0;
 
-      while (fetched < config.maxPerCategory) {
-        const take = Math.min(48, config.maxPerCategory - fetched);
+      const limit = config.maxPerCategory || Infinity;
+      while (fetched < limit) {
+        const take = limit === Infinity ? 48 : Math.min(48, limit - fetched);
         const data = await fetchMi9Page(config.apiBase, config.storeId, cat.id, take, skip);
         if (!data.items?.length) break;
 
@@ -252,7 +253,7 @@ const SUPERVALU: StoreConfig = {
   slug: "supervalu",
   apiBase: "https://storefrontgateway.supervalu.ie/api",
   storeId: "1733", // Ranelagh, Dublin
-  maxPerCategory: 500,
+  maxPerCategory: 0, // 0 = no limit, scrape ALL products
   categories: [
     { id: "O100001", name: "Fruit & Vegetables", mapped: "fruits & vegetables" },
     { id: "O100010", name: "Bakery", mapped: "bakery" },
@@ -273,7 +274,7 @@ const DUNNES: StoreConfig = {
   slug: "dunnes",
   apiBase: "https://storefrontgateway.dunnesstoresgrocery.com/api",
   storeId: "258", // Beacon Court, Dublin 18
-  maxPerCategory: 500,
+  maxPerCategory: 0, // 0 = no limit, scrape ALL products
   categories: [
     { id: "50066", name: "Fresh Fruit", mapped: "fruits & vegetables" },
     { id: "47183", name: "Fresh Vegetables", mapped: "fruits & vegetables" },
@@ -315,7 +316,7 @@ async function main() {
     console.log("Aldi (HTML scraper):");
     const store = await prisma.store.findUnique({ where: { slug: "aldi" } });
     if (store) {
-      const products = await scrapeAldiLive(5);
+      const products = await scrapeAldiLive(20); // up to 20 pages per subcategory
       let imported = 0;
       for (const p of products) {
         if (p.price <= 0 || !p.name || p.name.length < 3) continue;
@@ -346,7 +347,7 @@ async function main() {
     console.log("Tesco (HTML scraper):");
     const store = await prisma.store.findUnique({ where: { slug: "tesco" } });
     if (store) {
-      const products = await scrapeTescoLive(200);
+      const products = await scrapeTescoLive(0); // 0 = no limit
       let imported = 0;
       for (const p of products) {
         if (p.price <= 0 || !p.name || p.name.length < 3) continue;

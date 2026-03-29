@@ -276,7 +276,7 @@ async function fetchTescoPage(url: string): Promise<string> {
  * Visits category pages and paginates through results.
  */
 export async function scrapeTescoLive(
-  maxPerCategory: number = 200
+  maxPerCategory: number = 0
 ): Promise<ScrapedProduct[]> {
   const allProducts: ScrapedProduct[] = [];
   const seenIds = new Set<string>();
@@ -285,7 +285,7 @@ export async function scrapeTescoLive(
     try {
       let page = 1;
       let totalForCat = 0;
-      const maxPages = Math.ceil(maxPerCategory / 48);
+      const maxPages = maxPerCategory > 0 ? Math.ceil(maxPerCategory / 48) : 50; // 50 pages = ~2400 products max per category
 
       while (page <= maxPages) {
         const url = `${TESCO_BASE}${cat.path}?page=${page}&count=48`;
