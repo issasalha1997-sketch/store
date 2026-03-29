@@ -22,6 +22,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface ItemPrice {
@@ -197,7 +198,7 @@ export default function BasketPage() {
         </div>
         <h1 className="text-2xl font-bold">Your basket is empty</h1>
         <p className="mt-2 text-muted-foreground max-w-sm mx-auto">
-          Start adding items to compare prices across all 5 stores and plan
+          Start adding items to compare prices across stores and plan
           your shopping trip
         </p>
         <Link href="/search">
@@ -493,17 +494,36 @@ export default function BasketPage() {
                               <td className="p-3">
                                 <Link
                                   href={`/product/${basketItem.productSlug}`}
-                                  className="hover:text-teal-600 transition-colors"
+                                  className="hover:text-teal-600 transition-colors flex items-center gap-2.5"
                                 >
-                                  <p className="font-medium text-sm leading-tight">
-                                    {itemData.productName}
-                                  </p>
+                                  {basketItem.imageUrl && (
+                                    <div className="h-10 w-10 rounded-lg bg-neutral-50 flex-shrink-0 overflow-hidden flex items-center justify-center">
+                                      <Image
+                                        src={basketItem.imageUrl}
+                                        alt={itemData.productName}
+                                        width={40}
+                                        height={40}
+                                        className="object-contain"
+                                        unoptimized
+                                      />
+                                    </div>
+                                  )}
+                                  <div className="min-w-0">
+                                    <p className="font-medium text-sm leading-tight">
+                                      {itemData.productName}
+                                    </p>
+                                    {basketItem.brand && (
+                                      <p className="text-[10px] text-muted-foreground">
+                                        {basketItem.brand}
+                                      </p>
+                                    )}
+                                    {basketItem.weight && basketItem.weightUnit && (
+                                      <p className="text-[10px] text-muted-foreground">
+                                        {basketItem.weight}{basketItem.weightUnit}
+                                      </p>
+                                    )}
+                                  </div>
                                 </Link>
-                                {basketItem.brand && (
-                                  <p className="text-[10px] text-muted-foreground">
-                                    {basketItem.brand}
-                                  </p>
-                                )}
                               </td>
                               <td className="p-3 text-center">
                                 <div className="inline-flex items-center rounded-lg border text-xs">
@@ -728,18 +748,32 @@ export default function BasketPage() {
                           <CardContent className="p-4">
                             {/* Product header */}
                             <div className="flex items-start justify-between gap-2 mb-3">
-                              <div className="flex-1 min-w-0">
-                                <Link
-                                  href={`/product/${basketItem.productSlug}`}
-                                  className="font-semibold text-sm hover:text-teal-600 transition-colors leading-tight line-clamp-1"
-                                >
-                                  {itemData.productName}
-                                </Link>
-                                {basketItem.brand && (
-                                  <p className="text-[11px] text-muted-foreground">
-                                    {basketItem.brand}
-                                  </p>
+                              <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                                {basketItem.imageUrl && (
+                                  <div className="h-11 w-11 rounded-lg bg-neutral-50 flex-shrink-0 overflow-hidden flex items-center justify-center">
+                                    <Image
+                                      src={basketItem.imageUrl}
+                                      alt={itemData.productName}
+                                      width={44}
+                                      height={44}
+                                      className="object-contain"
+                                      unoptimized
+                                    />
+                                  </div>
                                 )}
+                                <div className="min-w-0">
+                                  <Link
+                                    href={`/product/${basketItem.productSlug}`}
+                                    className="font-semibold text-sm hover:text-teal-600 transition-colors leading-tight line-clamp-1"
+                                  >
+                                    {itemData.productName}
+                                  </Link>
+                                  {basketItem.brand && (
+                                    <p className="text-[11px] text-muted-foreground">
+                                      {basketItem.brand}
+                                    </p>
+                                  )}
+                                </div>
                               </div>
                               <div className="flex items-center gap-1.5 shrink-0">
                                 <div className="inline-flex items-center rounded-lg border text-xs">
