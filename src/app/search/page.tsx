@@ -8,7 +8,7 @@ import { FamilyCard } from "@/components/product/FamilyCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { CATEGORIES, STORES } from "@/lib/constants";
+import { CATEGORIES, ACTIVE_STORES } from "@/lib/constants";
 import Link from "next/link";
 import { Suspense, useState, useCallback } from "react";
 import { SlidersHorizontal, X, ChevronLeft, ChevronRight } from "lucide-react";
@@ -124,7 +124,7 @@ function SearchContent() {
         <span className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-wide mr-1">
           Stores:
         </span>
-        {STORES.map((store) => {
+        {ACTIVE_STORES.map((store) => {
           const isActive = selectedStores.includes(store.slug);
           return (
             <button
@@ -346,9 +346,48 @@ function SearchContent() {
                     Previous
                   </Button>
                   <div className="flex items-center gap-1 px-2">
-                    {Array.from({ length: Math.min(totalPages, 5) }).map(
-                      (_, i) => {
-                        const pageNum = i + 1;
+                    {(() => {
+                      const pages: (number | "ellipsis-start" | "ellipsis-end")[] = [];
+                      const SIBLING_COUNT = 2;
+
+                      // Always include first page
+                      pages.push(1);
+
+                      const rangeStart = Math.max(2, page - SIBLING_COUNT);
+                      const rangeEnd = Math.min(totalPages - 1, page + SIBLING_COUNT);
+
+                      // Add start ellipsis if there's a gap after page 1
+                      if (rangeStart > 2) {
+                        pages.push("ellipsis-start");
+                      }
+
+                      // Add pages in the window around current page
+                      for (let i = rangeStart; i <= rangeEnd; i++) {
+                        pages.push(i);
+                      }
+
+                      // Add end ellipsis if there's a gap before last page
+                      if (rangeEnd < totalPages - 1) {
+                        pages.push("ellipsis-end");
+                      }
+
+                      // Always include last page (if more than 1 page)
+                      if (totalPages > 1) {
+                        pages.push(totalPages);
+                      }
+
+                      return pages.map((item) => {
+                        if (item === "ellipsis-start" || item === "ellipsis-end") {
+                          return (
+                            <span
+                              key={item}
+                              className="flex h-8 w-8 items-center justify-center text-sm text-muted-foreground"
+                            >
+                              ...
+                            </span>
+                          );
+                        }
+                        const pageNum = item;
                         return (
                           <button
                             key={pageNum}
@@ -362,8 +401,8 @@ function SearchContent() {
                             {pageNum}
                           </button>
                         );
-                      }
-                    )}
+                      });
+                    })()}
                   </div>
                   <Button
                     variant="outline"

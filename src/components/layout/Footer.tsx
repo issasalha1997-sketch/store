@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { STORES } from "@/lib/constants";
+import { ACTIVE_STORES } from "@/lib/constants";
 
 export function Footer() {
   return (
@@ -21,7 +21,7 @@ export function Footer() {
               Save money on every weekly shop in Dublin.
             </p>
             <div className="mt-4 flex gap-2">
-              {STORES.map((store) => (
+              {ACTIVE_STORES.map((store) => (
                 <div
                   key={store.slug}
                   className="flex h-7 w-7 items-center justify-center rounded-lg text-white text-[10px] font-bold opacity-60 hover:opacity-100 transition-opacity"
@@ -67,7 +67,7 @@ export function Footer() {
               Stores We Compare
             </h3>
             <ul className="space-y-2.5 text-sm">
-              {STORES.map((store) => (
+              {ACTIVE_STORES.map((store) => (
                 <li
                   key={store.slug}
                   className="text-muted-foreground flex items-center gap-2"

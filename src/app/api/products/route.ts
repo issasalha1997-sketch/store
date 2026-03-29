@@ -70,35 +70,157 @@ export async function GET(request: NextRequest) {
 
     // ─── Standard individual product mode ─────────────────
     const skip = (page - 1) * limit;
-    let orderBy: Prisma.ProductOrderByWithRelationInput = { name: "asc" };
-    if (sortBy === "name") {
-      orderBy = { name: "asc" };
-    }
+    const isPriceSort = sortBy === "price_asc" || sortBy === "price_desc";
 
-    const [total, products] = await Promise.all([
-      prisma.product.count({ where }),
-      prisma.product.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy,
-        include: {
-          category: { select: { id: true, name: true, slug: true } },
-          prices: {
-            where: { isLatest: true },
-            include: {
-              store: {
-                select: {
-                  id: true, name: true, slug: true,
-                  logoUrl: true, color: true, websiteUrl: true,
+    let total: number;
+    let products: Awaited<ReturnType<typeof prisma.product.findMany<{
+      include: {
+        category: { select: { id: true; name: true; slug: true } };
+        prices: {
+          where: { isLatest: true };
+          include: {
+            store: {
+              select: {
+                id: true; name: true; slug: true;
+                logoUrl: true; color: true; websiteUrl: true;
+              };
+            };
+          };
+          orderBy: { price: "asc" };
+        };
+      };
+    }>>>;
+
+    if (isPriceSort) {
+      // Price sorting: use raw SQL to get correctly ordered+paginated product IDs
+      const conditions: string[] = [`p."isActive" = true`];
+      const params: unknown[] = [];
+      let paramIndex = 1;
+
+      if (q) {
+        conditions.push(
+          `(p.name ILIKE $${paramIndex} OR p.brand ILIKE $${paramIndex} OR p.description ILIKE $${paramIndex})`
+        );
+        params.push(`%${q}%`);
+        paramIndex++;
+      }
+
+      if (category) {
+        conditions.push(`c.slug = $${paramIndex}`);
+        params.push(category);
+        paramIndex++;
+      }
+
+      if (storeSlugs.length > 0) {
+        conditions.push(`s.slug = ANY($${paramIndex})`);
+        params.push(storeSlugs);
+        paramIndex++;
+      }
+
+      if (onSaleOnly) {
+        conditions.push(`pr."isOnSale" = true`);
+      }
+
+      const whereSQL = conditions.join(" AND ");
+      const direction = sortBy === "price_asc" ? "ASC" : "DESC";
+
+      // Count total matching products
+      const countQuery = `
+        SELECT COUNT(DISTINCT p.id)::int as total
+        FROM "Product" p
+        LEFT JOIN "Category" c ON c.id = p."categoryId"
+        LEFT JOIN "Price" pr ON pr."productId" = p.id AND pr."isLatest" = true
+        LEFT JOIN "Store" s ON s.id = pr."storeId"
+        WHERE ${whereSQL}
+      `;
+
+      // Get ordered product IDs with price-based sorting at the DB level
+      const idsQuery = `
+        SELECT p.id, MIN(pr.price::numeric) as min_price
+        FROM "Product" p
+        LEFT JOIN "Category" c ON c.id = p."categoryId"
+        LEFT JOIN "Price" pr ON pr."productId" = p.id AND pr."isLatest" = true
+        LEFT JOIN "Store" s ON s.id = pr."storeId"
+        WHERE ${whereSQL}
+        GROUP BY p.id
+        ORDER BY min_price ${direction} NULLS LAST, p.name ASC
+        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+      `;
+
+      const [countResult, idRows] = await Promise.all([
+        prisma.$queryRawUnsafe<[{ total: number }]>(countQuery, ...params),
+        prisma.$queryRawUnsafe<Array<{ id: string; min_price: number | null }>>(
+          idsQuery, ...params, limit, skip
+        ),
+      ]);
+
+      total = countResult[0]?.total ?? 0;
+      const orderedIds = idRows.map((r) => r.id);
+
+      if (orderedIds.length > 0) {
+        // Fetch full product data for the ordered IDs
+        const unorderedProducts = await prisma.product.findMany({
+          where: { id: { in: orderedIds } },
+          include: {
+            category: { select: { id: true, name: true, slug: true } },
+            prices: {
+              where: { isLatest: true },
+              include: {
+                store: {
+                  select: {
+                    id: true, name: true, slug: true,
+                    logoUrl: true, color: true, websiteUrl: true,
+                  },
                 },
               },
+              orderBy: { price: "asc" },
             },
-            orderBy: { price: "asc" },
           },
-        },
-      }),
-    ]);
+        });
+
+        // Re-sort to match the SQL ordering
+        const idOrder = new Map(orderedIds.map((id, idx) => [id, idx]));
+        products = unorderedProducts.sort(
+          (a, b) => (idOrder.get(a.id) ?? 0) - (idOrder.get(b.id) ?? 0)
+        );
+      } else {
+        products = [];
+      }
+    } else {
+      // Non-price sorting: use standard Prisma query
+      let orderBy: Prisma.ProductOrderByWithRelationInput = { name: "asc" };
+      if (sortBy === "name") {
+        orderBy = { name: "asc" };
+      }
+
+      const [countResult, productResult] = await Promise.all([
+        prisma.product.count({ where }),
+        prisma.product.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy,
+          include: {
+            category: { select: { id: true, name: true, slug: true } },
+            prices: {
+              where: { isLatest: true },
+              include: {
+                store: {
+                  select: {
+                    id: true, name: true, slug: true,
+                    logoUrl: true, color: true, websiteUrl: true,
+                  },
+                },
+              },
+              orderBy: { price: "asc" },
+            },
+          },
+        }),
+      ]);
+
+      total = countResult;
+      products = productResult;
+    }
 
     const data = products.map((product) => {
       const latestPrices = product.prices;
@@ -132,12 +254,6 @@ export async function GET(request: NextRequest) {
         priceCount: latestPrices.length,
       };
     });
-
-    if (sortBy === "price_asc") {
-      data.sort((a, b) => (a.minPrice ?? Infinity) - (b.minPrice ?? Infinity));
-    } else if (sortBy === "price_desc") {
-      data.sort((a, b) => (b.minPrice ?? 0) - (a.minPrice ?? 0));
-    }
 
     const totalPages = Math.ceil(total / limit);
     return NextResponse.json({ data, total, page, limit, totalPages });

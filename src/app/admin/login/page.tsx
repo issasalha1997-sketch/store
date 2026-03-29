@@ -16,14 +16,14 @@ export default function AdminLoginPage() {
     setLoading(true);
 
     try {
-      // Verify the secret by hitting an admin API endpoint
-      const res = await fetch("/api/admin/runs", {
-        headers: { "x-admin-secret": secret },
+      // Authenticate via server-side API route (sets HttpOnly cookie)
+      const res = await fetch("/api/admin/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ secret }),
       });
 
       if (res.ok) {
-        // Set the auth cookie (expires in 7 days)
-        document.cookie = `admin_auth=${secret}; path=/; max-age=${7 * 24 * 60 * 60}; samesite=strict`;
         router.push("/admin");
         router.refresh();
       } else {

@@ -5,6 +5,7 @@ export const STORES = [
     color: "#00539f",
     websiteUrl: "https://www.tesco.ie",
     logoUrl: "/icons/tesco.svg",
+    active: true,
   },
   {
     name: "Dunnes Stores",
@@ -12,6 +13,7 @@ export const STORES = [
     color: "#1a1a1a",
     websiteUrl: "https://www.dunnesstoresgrocery.com",
     logoUrl: "/icons/dunnes.svg",
+    active: true,
   },
   {
     name: "Lidl Ireland",
@@ -19,6 +21,7 @@ export const STORES = [
     color: "#0050aa",
     websiteUrl: "https://www.lidl.ie",
     logoUrl: "/icons/lidl.svg",
+    active: false,
   },
   {
     name: "Aldi Ireland",
@@ -26,6 +29,7 @@ export const STORES = [
     color: "#00005f",
     websiteUrl: "https://www.aldi.ie",
     logoUrl: "/icons/aldi.svg",
+    active: true,
   },
   {
     name: "SuperValu",
@@ -33,8 +37,12 @@ export const STORES = [
     color: "#e31837",
     websiteUrl: "https://www.supervalu.ie",
     logoUrl: "/icons/supervalu.svg",
+    active: true,
   },
 ] as const;
+
+/** Only stores that currently have products */
+export const ACTIVE_STORES = STORES.filter((s) => s.active);
 
 export const CATEGORIES = [
   { name: "Dairy & Eggs", slug: "dairy-eggs", icon: "🥛" },

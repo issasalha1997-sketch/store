@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 /**
  * Middleware to protect admin routes.
  *
- * - /api/admin/* : requires ADMIN_SECRET as "x-admin-secret" header or "secret" query param
+ * - /api/admin/* : requires ADMIN_SECRET as "x-admin-secret" header or "admin_auth" cookie
  * - /admin/*     : requires "admin_auth" cookie matching ADMIN_SECRET
  * - /admin/login : always accessible (so the user can authenticate)
  */
@@ -25,13 +25,16 @@ export function middleware(request: NextRequest) {
 
   // ── Protect API routes: /api/admin/* ──────────────────────────
   if (pathname.startsWith("/api/admin")) {
+    // Allow the auth endpoint through without auth (it validates internally)
+    if (pathname === "/api/admin/auth") {
+      return NextResponse.next();
+    }
+
     const headerSecret = request.headers.get("x-admin-secret");
-    const querySecret = request.nextUrl.searchParams.get("secret");
     const cookieSecret = request.cookies.get("admin_auth")?.value;
 
     if (
       headerSecret !== adminSecret &&
-      querySecret !== adminSecret &&
       cookieSecret !== adminSecret
     ) {
       return NextResponse.json(

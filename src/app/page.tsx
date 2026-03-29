@@ -15,7 +15,7 @@ import {
   Zap,
   Shield,
 } from "lucide-react";
-import { CATEGORIES, STORES } from "@/lib/constants";
+import { CATEGORIES, ACTIVE_STORES } from "@/lib/constants";
 import { STORE_COLORS } from "@/lib/constants";
 import { motion } from "framer-motion";
 
@@ -144,7 +144,7 @@ export default function HomePage() {
             viewport={{ once: true }}
             variants={staggerContainer}
           >
-            {STORES.map((store) => (
+            {ACTIVE_STORES.map((store) => (
               <motion.div
                 key={store.slug}
                 variants={staggerItem}
