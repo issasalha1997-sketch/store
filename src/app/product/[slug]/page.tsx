@@ -6,11 +6,9 @@ import Image from "next/image";
 import { PriceComparison } from "@/components/product/PriceComparison";
 import { StarRating } from "@/components/shared/StarRating";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { ShoppingCart, ArrowLeft, Check, Tag, ImageOff, Clock, Scale } from "lucide-react";
+import { ShoppingCart, ArrowLeft, Check, ImageOff, Clock, ChevronDown, TrendingDown, TrendingUp, Minus } from "lucide-react";
 import { useBasket } from "@/hooks/useBasket";
 import { formatPrice } from "@/lib/utils";
 import Link from "next/link";
@@ -24,6 +22,7 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [justAdded, setJustAdded] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const [reviewsOpen, setReviewsOpen] = useState(false);
 
   const { data: product, isLoading } = useQuery({
     queryKey: ["product", slug],
@@ -76,18 +75,10 @@ export default function ProductDetailPage() {
       isOnSale: p.isOnSale as boolean,
       unitPrice: p.unitPrice ? Number(p.unitPrice) : null,
       unitPriceUnit: p.unitPriceUnit as string | null,
+      freshness: p.freshness as "fresh" | "recent" | "stale" | undefined,
+      sourceUrl: p.sourceUrl as string | null | undefined,
     })
   );
-
-  const minPrice =
-    prices.length > 0
-      ? Math.min(...prices.map((p: { price: number }) => p.price))
-      : 0;
-  const maxPrice =
-    prices.length > 0
-      ? Math.max(...prices.map((p: { price: number }) => p.price))
-      : 0;
-  const savings = maxPrice - minPrice;
 
   const handleAddToBasket = () => {
     for (let i = 0; i < quantity; i++) {
@@ -104,6 +95,78 @@ export default function ProductDetailPage() {
     setJustAdded(true);
     setTimeout(() => setJustAdded(false), 2000);
   };
+
+  // Build "Other Sizes" data from familyMembers
+  type FamilyMember = {
+    id: string;
+    name: string;
+    slug: string;
+    weight: number | null;
+    weightUnit: string | null;
+    store: string;
+    storeSlug: string;
+    storeColor: string | null;
+    price: number;
+    unitPrice: number | null;
+    unitPriceUnit: string | null;
+  };
+
+  function toGrams(w: number | null, u: string | null): number {
+    if (!w || !u) return 0;
+    const unit = u.toLowerCase();
+    if (unit === "kg") return w * 1000;
+    if (unit === "g") return w;
+    if (unit === "l" || unit === "ltr" || unit === "litre") return w * 1000;
+    if (unit === "ml") return w;
+    if (unit === "cl") return w * 10;
+    if (unit.includes("pack") || unit.includes("pk")) return w * 10000;
+    return w;
+  }
+
+  type SizeGroup = { label: string; slug: string; cheapestPrice: number; cheapestStore: string };
+  const otherSizes: SizeGroup[] = [];
+
+  if (product.familyMembers && product.familyMembers.length > 1) {
+    const others = (product.familyMembers as FamilyMember[]).filter(m => m.slug !== product.slug);
+    // Group by slug (each slug = a size variant)
+    const bySlug = new Map<string, FamilyMember[]>();
+    for (const m of others) {
+      const existing = bySlug.get(m.slug) || [];
+      existing.push(m);
+      bySlug.set(m.slug, existing);
+    }
+
+    for (const [memberSlug, members] of bySlug) {
+      const cheapest = members.reduce((min, m) => m.price < min.price ? m : min);
+      // Build a weight label
+      let label: string;
+      const m0 = members[0];
+      if (m0.weight && m0.weightUnit) {
+        const w = m0.weight;
+        const u = m0.weightUnit.toLowerCase();
+        if (u === "kg" && w < 1) label = `${Math.round(w * 1000)}g`;
+        else if (u === "l" && w < 1) label = `${Math.round(w * 1000)}ml`;
+        else label = `${w}${u}`;
+      } else {
+        const wMatch = m0.name.match(/(\d+(?:\.\d+)?)\s*(g|kg|ml|l|cl|pk|pack)/i);
+        label = wMatch ? `${wMatch[1]}${wMatch[2].toLowerCase()}` : m0.name;
+      }
+
+      otherSizes.push({
+        label,
+        slug: memberSlug,
+        cheapestPrice: cheapest.price,
+        cheapestStore: cheapest.store,
+      });
+    }
+    // Sort by weight
+    otherSizes.sort((a, b) => {
+      // Extract a rough numeric for sorting
+      const numA = parseFloat(a.label) || 0;
+      const numB = parseFloat(b.label) || 0;
+      return numA - numB;
+    });
+  }
 
   return (
     <motion.div
@@ -136,74 +199,36 @@ export default function ProductDetailPage() {
 
       <div className="grid gap-6 sm:gap-8 lg:grid-cols-2">
         {/* Left - Product Image */}
-        <div>
-          <motion.div
-            className="flex h-64 sm:h-80 items-center justify-center rounded-2xl bg-gradient-to-br from-muted/30 to-muted/60 relative overflow-hidden"
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.4 }}
-          >
-            {product.imageUrl && !imgError ? (
-              <Image
-                src={product.imageUrl}
-                alt={product.name}
-                width={320}
-                height={320}
-                className="object-contain h-full w-auto p-4"
-                onError={() => setImgError(true)}
-                unoptimized
-              />
-            ) : (
-              <div className="flex flex-col items-center justify-center text-muted-foreground/40">
-                <ImageOff className="h-16 w-16" />
-                <span className="text-sm mt-2">No image available</span>
-              </div>
-            )}
-            {/* Sale badge */}
-            {prices.some((p: { isOnSale: boolean }) => p.isOnSale) && (
-              <div className="absolute top-4 left-4">
-                <Badge className="bg-gradient-to-r from-red-500 to-orange-500 text-white border-0 shadow-md px-3 py-1">
-                  <Tag className="h-3 w-3 mr-1" />
-                  ON SALE
-                </Badge>
-              </div>
-            )}
-          </motion.div>
-
-          {/* Quick stats */}
-          <div className="mt-4 grid grid-cols-3 gap-3">
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-3 text-center">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
-                  Cheapest
-                </p>
-                <p className="text-lg font-bold text-teal-600 tabular-nums">
-                  {formatPrice(minPrice)}
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-3 text-center">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
-                  Most Expensive
-                </p>
-                <p className="text-lg font-bold tabular-nums">
-                  {formatPrice(maxPrice)}
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="border-0 shadow-sm bg-teal-50">
-              <CardContent className="p-3 text-center">
-                <p className="text-xs uppercase tracking-wide text-teal-600 font-medium">
-                  You Save
-                </p>
-                <p className="text-lg font-bold text-teal-600 tabular-nums">
-                  {formatPrice(savings)}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+        <motion.div
+          className="flex h-64 sm:h-80 items-center justify-center rounded-2xl bg-gradient-to-br from-muted/30 to-muted/60 relative overflow-hidden"
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.4 }}
+        >
+          {product.imageUrl && !imgError ? (
+            <Image
+              src={product.imageUrl}
+              alt={product.name}
+              width={320}
+              height={320}
+              className="object-contain h-full w-auto p-4"
+              onError={() => setImgError(true)}
+              unoptimized
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center text-muted-foreground/40">
+              <ImageOff className="h-16 w-16" />
+              <span className="text-sm mt-2">No image available</span>
+            </div>
+          )}
+          {prices.some((p: { isOnSale: boolean }) => p.isOnSale) && (
+            <div className="absolute top-4 left-4">
+              <span className="inline-block bg-gradient-to-r from-red-500 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md">
+                ON SALE
+              </span>
+            </div>
+          )}
+        </motion.div>
 
         {/* Right - Product Info */}
         <motion.div
@@ -211,69 +236,77 @@ export default function ProductDetailPage() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.4, delay: 0.1 }}
         >
+          {/* 1. Name / brand / weight */}
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold">{product.name}</h1>
-            <div className="flex flex-wrap items-center gap-2 mt-2">
+            <div className="flex flex-wrap items-center gap-2 mt-1.5">
               {product.brand && (
                 <span className="text-muted-foreground">{product.brand}</span>
               )}
               {product.weight && product.weightUnit && (
-                <Badge variant="secondary" className="rounded-full">
-                  {product.weight}
-                  {product.weightUnit}
-                </Badge>
+                <span className="text-sm text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">
+                  {product.weight}{product.weightUnit}
+                </span>
               )}
             </div>
+            {product.description && (
+              <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+                {product.description}
+              </p>
+            )}
           </div>
 
-          {/* Description */}
-          {product.description && (
-            <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
-              {product.description}
-            </p>
-          )}
+          <Separator className="my-5" />
 
-          {/* Rating */}
-          {product.averageRating && (
-            <div className="mt-3 flex items-center gap-2">
-              <StarRating rating={product.averageRating} size="sm" />
-              <span className="text-sm text-muted-foreground">
-                ({product.reviewCount} review
-                {product.reviewCount !== 1 ? "s" : ""})
-              </span>
+          {/* 2. Price Comparison Table -- THE main feature */}
+          <PriceComparison prices={prices} productDescription={product.description} />
+
+          {/* Price freshness indicator */}
+          {prices.length > 0 && (() => {
+            const freshness = product.overallFreshness as string | undefined;
+            const latest = prices
+              .map((p: { scrapedAt?: string }) => p.scrapedAt ? new Date(p.scrapedAt).getTime() : 0)
+              .reduce((a: number, b: number) => Math.max(a, b), 0);
+            const diff = latest ? Date.now() - latest : 0;
+            const hours = Math.floor(diff / 3600000);
+            const days = Math.floor(diff / 86400000);
+            const timeText = days > 0
+              ? `${days} day${days > 1 ? "s" : ""} ago`
+              : hours > 0
+                ? `${hours} hour${hours > 1 ? "s" : ""} ago`
+                : "just now";
+
+            if (freshness === "stale") {
+              return (
+                <div className="mt-2 flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
+                  <Clock className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span>
+                    Prices may be outdated — last checked {timeText}
+                  </span>
+                </div>
+              );
+            }
+            return (
+              <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Clock className="h-3 w-3" />
+                <span>Prices updated {timeText}</span>
+              </div>
+            );
+          })()}
+
+          {/* Price History / Trend */}
+          {product.priceTrend && (
+            <div className="mt-3 mb-1">
+              <PriceHistorySection
+                trend={product.priceTrend}
+                history={product.priceHistory}
+              />
             </div>
           )}
 
           <Separator className="my-5" />
 
-          {/* Price Comparison */}
-          <PriceComparison prices={prices} />
-
-          {/* Price freshness */}
-          {prices.length > 0 && prices[0].scrapedAt && (
-            <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Clock className="h-3 w-3" />
-              <span>
-                Prices last updated{" "}
-                {(() => {
-                  const latest = prices
-                    .map((p: { scrapedAt?: string }) => p.scrapedAt ? new Date(p.scrapedAt).getTime() : 0)
-                    .reduce((a: number, b: number) => Math.max(a, b), 0);
-                  if (!latest) return "recently";
-                  const diff = Date.now() - latest;
-                  const hours = Math.floor(diff / 3600000);
-                  const days = Math.floor(diff / 86400000);
-                  if (days > 0) return `${days} day${days > 1 ? "s" : ""} ago`;
-                  if (hours > 0) return `${hours} hour${hours > 1 ? "s" : ""} ago`;
-                  return "just now";
-                })()}
-              </span>
-            </div>
-          )}
-
-          <Separator className="my-5" />
-
-          {/* Add to Basket */}
+          {/* 3. Add to Basket -- prominent */}
           <div className="flex items-center gap-3">
             <div className="flex items-center rounded-xl border-2 overflow-hidden">
               <button
@@ -331,223 +364,104 @@ export default function ProductDetailPage() {
             </AnimatePresence>
           </div>
 
-          {/* Other Sizes — family members grouped by weight */}
-          {product.familyMembers && product.familyMembers.length > 1 && (() => {
-            type FamilyMember = {
-              id: string;
-              name: string;
-              slug: string;
-              weight: number | null;
-              weightUnit: string | null;
-              store: string;
-              storeSlug: string;
-              storeColor: string | null;
-              price: number;
-              unitPrice: number | null;
-              unitPriceUnit: string | null;
-            };
-            const members: FamilyMember[] = product.familyMembers;
+          {/* 4. Other Sizes -- simplified inline list */}
+          {otherSizes.length > 0 && (
+            <div className="mt-6 bg-neutral-50 rounded-xl p-4">
+              <p className="text-sm font-semibold text-neutral-700 mb-2">Also available</p>
+              <div className="flex flex-wrap gap-2">
+                {otherSizes.map((size) => (
+                  <Link
+                    key={size.slug}
+                    href={`/product/${size.slug}`}
+                    className="inline-flex items-center gap-1.5 bg-white border border-neutral-200 hover:border-teal-300 hover:bg-teal-50 rounded-lg px-3 py-1.5 transition-colors text-sm"
+                  >
+                    <span className="font-semibold text-neutral-800">{size.label}</span>
+                    <span className="text-neutral-400">from</span>
+                    <span className="font-bold text-teal-600 tabular-nums">{formatPrice(size.cheapestPrice)}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
 
-            // Normalize weight to grams for grouping
-            function toGrams(w: number | null, u: string | null): number {
-              if (!w || !u) return 0;
-              const unit = u.toLowerCase();
-              if (unit === "kg") return w * 1000;
-              if (unit === "g") return w;
-              if (unit === "l" || unit === "ltr" || unit === "litre") return w * 1000;
-              if (unit === "ml") return w;
-              if (unit === "cl") return w * 10;
-              if (unit.includes("pack") || unit.includes("pk")) return w * 10000; // separate group
-              return w;
-            }
-
-            // Group members by approximate weight (±20% tolerance)
-            const groups: { label: string; sortWeight: number; items: FamilyMember[] }[] = [];
-            // Filter out current product's entries (already in Price Comparison)
-            const others = [...members].filter(m => m.slug !== product.slug);
-            if (others.length === 0) return null;
-
-            const sorted = others.sort((a, b) => toGrams(a.weight, a.weightUnit) - toGrams(b.weight, b.weightUnit));
-
-            for (const m of sorted) {
-              const grams = toGrams(m.weight, m.weightUnit);
-              // Find an existing group within 20% tolerance (only for items that have weight)
-              const existingGroup = grams > 0 ? groups.find(g => {
-                if (g.sortWeight === 0) return false;
-                const diff = Math.abs(grams - g.sortWeight) / Math.max(g.sortWeight, 1);
-                return diff < 0.2;
-              }) : null;
-              if (existingGroup) {
-                existingGroup.items.push(m);
-              } else {
-                // Create a readable label
-                let label: string;
-                if (m.weight && m.weightUnit) {
-                  const w = m.weight;
-                  const u = m.weightUnit.toLowerCase();
-                  // Convert decimals: 0.5kg → 500g, 0.75l → 750ml
-                  if (u === "kg" && w < 1) label = `${Math.round(w * 1000)}g`;
-                  else if (u === "l" && w < 1) label = `${Math.round(w * 1000)}ml`;
-                  else label = `${w}${u}`;
-                } else {
-                  // Try extracting from name
-                  const wMatch = m.name.match(/(\d+(?:\.\d+)?)\s*(g|kg|ml|l|cl|pk|pack)/i);
-                  if (wMatch) {
-                    label = `${wMatch[1]}${wMatch[2].toLowerCase()}`;
-                  } else {
-                    // No weight at all — use a short version of the product name
-                    label = m.name;
-                  }
-                }
-                groups.push({ label, sortWeight: grams || 999999, items: [m] });
-              }
-            }
-
-            if (groups.length === 0) return null;
-
-            return (
-              <Card className="mt-8 border-0 shadow-sm">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base font-bold flex items-center gap-2">
-                    <Scale className="h-5 w-5 text-teal-600" />
-                    Other Sizes
-                  </CardTitle>
-                  <p className="text-xs text-muted-foreground">
-                    Compare stores for each size — pick what suits you
-                  </p>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {groups.map((group) => {
-                    const cheapestInGroup = group.items.reduce((min, m) =>
-                      m.price < min.price ? m : min
-                    );
-                    return (
-                      <div key={group.label} className="space-y-1.5">
-                        {/* Size header */}
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
-                            {group.label}
-                          </span>
-                          <div className="flex-1 h-px bg-neutral-100" />
-                          {group.items.length > 1 && (
-                            <span className="text-xs text-neutral-400">
-                              {group.items.length} stores
-                            </span>
-                          )}
-                        </div>
-                        {/* Store comparisons for this size */}
-                        {group.items
-                          .sort((a, b) => a.price - b.price)
-                          .map((member) => {
-                            const isCurrent = member.slug === product.slug;
-                            const isCheapest = member.price === cheapestInGroup.price && group.items.length > 1;
-                            return (
-                              <Link
-                                key={`${member.id}-${member.storeSlug}`}
-                                href={isCurrent ? "#" : `/product/${member.slug}`}
-                                className={`flex items-center gap-2.5 rounded-xl p-2.5 transition-all ${
-                                  isCurrent
-                                    ? "bg-teal-50 ring-1 ring-teal-200"
-                                    : isCheapest
-                                      ? "bg-emerald-50/60 hover:bg-emerald-50"
-                                      : "bg-neutral-50/60 hover:bg-neutral-50"
-                                }`}
-                              >
-                                <div
-                                  className="w-1 h-7 rounded-full flex-shrink-0"
-                                  style={{ backgroundColor: member.storeColor || "#999" }}
-                                />
-                                <div className="flex-1 min-w-0">
-                                  <span className="text-sm font-medium text-neutral-800">
-                                    {member.store}
-                                  </span>
-                                  {isCurrent && (
-                                    <span className="text-xs ml-1 text-teal-500">(viewing)</span>
-                                  )}
-                                  {isCheapest && (
-                                    <span className="text-[11px] ml-1 bg-emerald-600 text-white px-1 py-0.5 rounded-full font-bold">
-                                      BEST
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="text-right flex-shrink-0">
-                                  <span className={`text-sm font-bold tabular-nums ${isCheapest ? "text-emerald-700" : ""}`}>
-                                    {formatPrice(member.price)}
-                                  </span>
-                                  {member.unitPrice && member.unitPriceUnit && (
-                                    <p className="text-xs text-neutral-400 tabular-nums">
-                                      {formatPrice(member.unitPrice)}/{member.unitPriceUnit}
-                                    </p>
-                                  )}
-                                </div>
-                              </Link>
-                            );
-                          })}
-                      </div>
-                    );
-                  })}
-                </CardContent>
-              </Card>
-            );
-          })()}
-
-          {/* Reviews section */}
-          <Card className="mt-8 border-0 shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg">Reviews</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {product.reviews && product.reviews.length > 0 ? (
-                <div className="space-y-4">
-                  {product.reviews.map(
-                    (review: {
-                      id: string;
-                      rating: number;
-                      title: string | null;
-                      body: string | null;
-                      user: { name: string | null };
-                      createdAt: string;
-                    }) => (
-                      <div
-                        key={review.id}
-                        className="border-b pb-4 last:border-0"
-                      >
-                        <div className="flex items-center gap-2">
-                          <StarRating rating={review.rating} size="sm" />
-                          {review.title && (
-                            <span className="text-sm font-medium">
-                              {review.title}
-                            </span>
-                          )}
-                        </div>
-                        {review.body && (
-                          <p className="mt-1 text-sm text-muted-foreground">
-                            {review.body}
-                          </p>
-                        )}
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          by {review.user?.name || "Anonymous"}
-                        </p>
-                      </div>
-                    )
+          {/* 5. Reviews -- collapsible */}
+          {(product.reviews && product.reviews.length > 0 || product.averageRating) && (
+            <div className="mt-6 border border-neutral-100 rounded-xl overflow-hidden">
+              <button
+                onClick={() => setReviewsOpen(!reviewsOpen)}
+                className="w-full flex items-center justify-between p-4 hover:bg-neutral-50 transition-colors text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-neutral-700">Reviews</span>
+                  {product.averageRating && (
+                    <div className="flex items-center gap-1.5">
+                      <StarRating rating={product.averageRating} size="sm" />
+                      <span className="text-xs text-muted-foreground">
+                        ({product.reviewCount || 0})
+                      </span>
+                    </div>
                   )}
                 </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  No reviews yet. Be the first to review this product!
-                </p>
-              )}
-            </CardContent>
-          </Card>
+                <ChevronDown
+                  className={`h-4 w-4 text-neutral-400 transition-transform ${reviewsOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+              <AnimatePresence>
+                {reviewsOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="px-4 pb-4 space-y-3 border-t border-neutral-100 pt-3">
+                      {product.reviews && product.reviews.length > 0 ? (
+                        product.reviews.map(
+                          (review: {
+                            id: string;
+                            rating: number;
+                            title: string | null;
+                            body: string | null;
+                            user: { name: string | null };
+                            createdAt: string;
+                          }) => (
+                            <div key={review.id} className="border-b border-neutral-50 pb-3 last:border-0">
+                              <div className="flex items-center gap-2">
+                                <StarRating rating={review.rating} size="sm" />
+                                {review.title && (
+                                  <span className="text-sm font-medium">{review.title}</span>
+                                )}
+                              </div>
+                              {review.body && (
+                                <p className="mt-1 text-sm text-muted-foreground">{review.body}</p>
+                              )}
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                by {review.user?.name || "Anonymous"}
+                              </p>
+                            </div>
+                          )
+                        )
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          No reviews yet. Be the first to review this product!
+                        </p>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
         </motion.div>
       </div>
 
-      {/* Similar Products */}
+      {/* Similar Products -- simplified to a compact row */}
       {product.similarProducts && product.similarProducts.length > 0 && (
         <div className="mt-10">
-          <h2 className="text-xl font-bold mb-4">Similar Products</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {product.similarProducts.map(
+          <h2 className="text-lg font-bold mb-3">Similar Products</h2>
+          <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+            {product.similarProducts.slice(0, 6).map(
               (sp: {
                 id: string;
                 name: string;
@@ -558,34 +472,30 @@ export default function ProductDetailPage() {
                 <Link
                   key={sp.id}
                   href={`/product/${sp.slug}`}
-                  className="group"
+                  className="flex-shrink-0 w-32 group"
                 >
-                  <Card className="border-0 shadow-sm hover:shadow-md transition-shadow h-full">
-                    <CardContent className="p-3">
-                      <div className="h-20 sm:h-24 flex items-center justify-center rounded-lg bg-muted/30 mb-2 overflow-hidden">
-                        {sp.imageUrl ? (
-                          <Image
-                            src={sp.imageUrl}
-                            alt={sp.name}
-                            width={96}
-                            height={96}
-                            className="object-contain h-full w-auto p-1 group-hover:scale-110 transition-transform"
-                            unoptimized
-                          />
-                        ) : (
-                          <ImageOff className="h-6 w-6 text-muted-foreground/30" />
-                        )}
-                      </div>
-                      <p className="text-xs font-medium line-clamp-2 group-hover:text-teal-600 transition-colors">
-                        {sp.name}
-                      </p>
-                      {sp.minPrice && (
-                        <p className="text-sm font-bold text-teal-600 mt-1 tabular-nums">
-                          from {formatPrice(sp.minPrice)}
-                        </p>
-                      )}
-                    </CardContent>
-                  </Card>
+                  <div className="h-20 flex items-center justify-center rounded-lg bg-muted/30 mb-1.5 overflow-hidden">
+                    {sp.imageUrl ? (
+                      <Image
+                        src={sp.imageUrl}
+                        alt={sp.name}
+                        width={80}
+                        height={80}
+                        className="object-contain h-full w-auto p-1 group-hover:scale-110 transition-transform"
+                        unoptimized
+                      />
+                    ) : (
+                      <ImageOff className="h-5 w-5 text-muted-foreground/30" />
+                    )}
+                  </div>
+                  <p className="text-xs font-medium line-clamp-2 group-hover:text-teal-600 transition-colors">
+                    {sp.name}
+                  </p>
+                  {sp.minPrice && (
+                    <p className="text-xs font-bold text-teal-600 mt-0.5 tabular-nums">
+                      from {formatPrice(sp.minPrice)}
+                    </p>
+                  )}
                 </Link>
               )
             )}
@@ -593,5 +503,138 @@ export default function ProductDetailPage() {
         </div>
       )}
     </motion.div>
+  );
+}
+
+/**
+ * Price History section with a sparkline SVG and text summary.
+ */
+function PriceHistorySection({
+  trend,
+  history,
+}: {
+  trend: {
+    direction: "down" | "up" | "stable";
+    oldPrice: number | null;
+    newPrice: number | null;
+    changePercent: number | null;
+    dataPoints: number;
+  };
+  history: Array<{
+    price: number;
+    scrapedAt: string;
+    store: { name: string; slug: string; color: string | null };
+  }>;
+}) {
+  // Build sparkline from history data
+  const pricePoints = history.map((h) => Number(h.price));
+
+  const TrendIcon =
+    trend.direction === "down"
+      ? TrendingDown
+      : trend.direction === "up"
+        ? TrendingUp
+        : Minus;
+
+  const trendColor =
+    trend.direction === "down"
+      ? "text-emerald-600"
+      : trend.direction === "up"
+        ? "text-red-500"
+        : "text-neutral-500";
+
+  const trendBg =
+    trend.direction === "down"
+      ? "bg-emerald-50"
+      : trend.direction === "up"
+        ? "bg-red-50"
+        : "bg-neutral-50";
+
+  // Build inline SVG sparkline
+  let sparklineSvg: React.ReactNode = null;
+  if (pricePoints.length >= 3) {
+    const width = 200;
+    const height = 40;
+    const padding = 2;
+    const min = Math.min(...pricePoints);
+    const max = Math.max(...pricePoints);
+    const range = max - min || 1;
+    const points = pricePoints.map((p, i) => {
+      const x = padding + (i / (pricePoints.length - 1)) * (width - 2 * padding);
+      const y = padding + (1 - (p - min) / range) * (height - 2 * padding);
+      return `${x},${y}`;
+    });
+
+    const strokeColor =
+      trend.direction === "down" ? "#059669" : trend.direction === "up" ? "#ef4444" : "#737373";
+
+    sparklineSvg = (
+      <svg
+        width={width}
+        height={height}
+        viewBox={`0 0 ${width} ${height}`}
+        className="flex-shrink-0"
+      >
+        <polyline
+          points={points.join(" ")}
+          fill="none"
+          stroke={strokeColor}
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        {/* Dot on last point */}
+        {(() => {
+          const lastPoint = points[points.length - 1].split(",");
+          return (
+            <circle
+              cx={lastPoint[0]}
+              cy={lastPoint[1]}
+              r="3"
+              fill={strokeColor}
+            />
+          );
+        })()}
+      </svg>
+    );
+  }
+
+  return (
+    <div className={`rounded-xl px-3 py-2.5 ${trendBg}`}>
+      <div className="flex items-center gap-2 mb-1">
+        <TrendIcon className={`h-4 w-4 ${trendColor}`} />
+        <span className="text-sm font-semibold text-neutral-800">
+          Price Trend (30 days)
+        </span>
+      </div>
+      <div className="flex items-center gap-3">
+        {sparklineSvg && <div className="flex-shrink-0">{sparklineSvg}</div>}
+        <p className={`text-sm ${trendColor}`}>
+          {trend.direction === "stable" && trend.newPrice != null && (
+            <>Price stable at <span className="font-bold">{formatPrice(trend.newPrice)}</span></>
+          )}
+          {trend.direction === "down" && trend.oldPrice != null && trend.newPrice != null && (
+            <>
+              <span className="font-bold">{formatPrice(trend.oldPrice)}</span>
+              {" "}&rarr;{" "}
+              <span className="font-bold">{formatPrice(trend.newPrice)}</span>
+              {trend.changePercent != null && (
+                <span className="ml-1 text-xs">({trend.changePercent}%)</span>
+              )}
+            </>
+          )}
+          {trend.direction === "up" && trend.oldPrice != null && trend.newPrice != null && (
+            <>
+              <span className="font-bold">{formatPrice(trend.oldPrice)}</span>
+              {" "}&rarr;{" "}
+              <span className="font-bold">{formatPrice(trend.newPrice)}</span>
+              {trend.changePercent != null && (
+                <span className="ml-1 text-xs">(+{trend.changePercent}%)</span>
+              )}
+            </>
+          )}
+        </p>
+      </div>
+    </div>
   );
 }

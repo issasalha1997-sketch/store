@@ -3,10 +3,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, TrendingDown, Check, ImageOff } from "lucide-react";
-import { StoreLogo } from "@/components/shared/StoreLogo";
+import { ShoppingCart, Check, ImageOff } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 import { useBasket } from "@/hooks/useBasket";
 import { useState } from "react";
@@ -40,7 +38,6 @@ export function ProductCard({
   maxPrice,
   cheapestStore,
   isOnSale,
-  priceCount,
 }: ProductCardProps) {
   const addItem = useBasket((s) => s.addItem);
   const [justAdded, setJustAdded] = useState(false);
@@ -68,16 +65,6 @@ export function ProductCard({
   return (
     <Link href={`/product/${slug}`}>
       <Card className="card-hover group h-full border-0 shadow-sm hover:shadow-lg bg-white relative overflow-hidden">
-        {/* Sale ribbon */}
-        {isOnSale && (
-          <div className="absolute top-3 left-0 z-10">
-            <div className="flex items-center gap-1 bg-gradient-to-r from-red-500 to-orange-500 text-white text-[10px] font-bold pl-2 pr-3 py-1 rounded-r-full shadow-sm">
-              <TrendingDown className="h-3 w-3" />
-              SALE
-            </div>
-          </div>
-        )}
-
         <CardContent className="p-4">
           {/* Product image */}
           <div className="mb-3 flex h-28 sm:h-32 items-center justify-center rounded-xl bg-gradient-to-br from-muted/30 to-muted/60 relative overflow-hidden group-hover:from-teal-50/50 group-hover:to-emerald-50/50 transition-colors duration-300">
@@ -98,67 +85,34 @@ export function ProductCard({
             )}
           </div>
 
-          {/* Product info */}
-          <div className="min-h-[3.5rem]">
-            <h3 className="text-sm font-semibold leading-tight line-clamp-2 group-hover:text-teal-600 transition-colors">
-              {name}
-            </h3>
-            <div className="flex items-center gap-2 mt-0.5">
-              {brand && (
-                <p className="text-[11px] text-muted-foreground">{brand}</p>
-              )}
-              {weight && weightUnit && (
-                <p className="text-[11px] text-muted-foreground">
-                  {brand ? "·" : ""} {weight}{weightUnit}
-                </p>
-              )}
-            </div>
-          </div>
+          {/* Product name */}
+          <h3 className="text-sm font-semibold leading-tight line-clamp-2 group-hover:text-teal-600 transition-colors">
+            {name}
+          </h3>
+          {brand && (
+            <p className="text-[11px] text-muted-foreground mt-0.5">{brand}</p>
+          )}
 
-          {/* Price section */}
+          {/* Cheapest price + store */}
           <div className="mt-3 pt-3 border-t border-dashed">
-            <div className="flex items-end justify-between">
-              <div>
-                <p className="text-xl font-bold text-teal-600 tabular-nums">
-                  {formatPrice(minPrice)}
-                </p>
-                {hasSavings && (
-                  <p className="text-[11px] text-muted-foreground">
-                    to {formatPrice(maxPrice)}
-                  </p>
-                )}
-              </div>
+            <p className="text-lg font-bold text-teal-600 tabular-nums leading-tight">
+              {formatPrice(minPrice)}
               {cheapestStore && (
-                <div className="flex items-center gap-1.5">
-                  <StoreLogo
-                    slug={cheapestStore.slug}
-                    name={cheapestStore.name}
-                    size="sm"
-                  />
-                  <span className="text-[10px] text-muted-foreground font-medium hidden sm:inline">
-                    {cheapestStore.name.split(" ")[0]}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {hasSavings && (
-              <div className="mt-1.5 flex items-center gap-2">
-                <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-teal-400 to-teal-500"
-                    style={{ width: `${Math.min(100, (savings / maxPrice) * 100)}%` }}
-                  />
-                </div>
-                <span className="text-[10px] font-bold text-teal-600 whitespace-nowrap">
-                  Save {formatPrice(savings)}
+                <span className="text-xs font-semibold text-muted-foreground ml-1">
+                  at {cheapestStore.name}
                 </span>
-              </div>
+              )}
+            </p>
+
+            {isOnSale && (
+              <span className="inline-block mt-1 text-[11px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">
+                SALE
+              </span>
             )}
 
-            {priceCount && priceCount > 1 && (
-              <p className="mt-1 text-[10px] text-muted-foreground">
-                Compared at {priceCount} stores
+            {hasSavings && (
+              <p className="mt-1 text-xs font-medium text-emerald-600">
+                Save up to {formatPrice(savings)}
               </p>
             )}
           </div>

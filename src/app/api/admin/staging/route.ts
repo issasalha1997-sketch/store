@@ -128,28 +128,52 @@ export async function POST(request: NextRequest) {
           : undefined;
         const categoryId = catSlug ? catMap.get(catSlug) : undefined;
 
-        // Upsert product
-        const product = await prisma.product.upsert({
-          where: { slug: sp.matchSlug },
-          create: {
-            name: sp.canonName,
-            slug: sp.matchSlug,
-            brand: sp.brand || null,
-            imageUrl: sp.imageUrl || null,
-            description: sp.description?.slice(0, 500) || null,
-            weight: sp.weight || null,
-            weightUnit: sp.weightUnit || null,
-            categoryId: categoryId || null,
-            isActive: true,
-          },
-          update: {
-            ...(sp.imageUrl ? { imageUrl: sp.imageUrl } : {}),
-            ...(sp.brand ? { brand: sp.brand } : {}),
-            ...(sp.description
-              ? { description: sp.description.slice(0, 500) }
-              : {}),
-          },
-        });
+        // Try barcode-based matching first (most reliable), then fall back to slug
+        let product: Awaited<ReturnType<typeof prisma.product.upsert>>;
+
+        const barcodeMatch = sp.barcode
+          ? await prisma.product.findUnique({ where: { barcode: sp.barcode } })
+          : null;
+
+        if (barcodeMatch) {
+          // Update existing product matched by barcode
+          product = await prisma.product.update({
+            where: { id: barcodeMatch.id },
+            data: {
+              ...(sp.imageUrl ? { imageUrl: sp.imageUrl } : {}),
+              ...(sp.brand ? { brand: sp.brand } : {}),
+              ...(sp.description
+                ? { description: sp.description.slice(0, 500) }
+                : {}),
+            },
+          });
+        } else {
+          // Fall back to slug-based upsert
+          product = await prisma.product.upsert({
+            where: { slug: sp.matchSlug },
+            create: {
+              name: sp.canonName,
+              slug: sp.matchSlug,
+              brand: sp.brand || null,
+              imageUrl: sp.imageUrl || null,
+              description: sp.description?.slice(0, 500) || null,
+              weight: sp.weight || null,
+              weightUnit: sp.weightUnit || null,
+              barcode: sp.barcode || null,
+              categoryId: categoryId || null,
+              isActive: true,
+            },
+            update: {
+              ...(sp.imageUrl ? { imageUrl: sp.imageUrl } : {}),
+              ...(sp.brand ? { brand: sp.brand } : {}),
+              ...(sp.description
+                ? { description: sp.description.slice(0, 500) }
+                : {}),
+              // Set barcode if product exists but doesn't have one yet
+              ...(sp.barcode ? { barcode: sp.barcode } : {}),
+            },
+          });
+        }
 
         // Mark old prices as not latest
         await prisma.price.updateMany({

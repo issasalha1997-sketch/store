@@ -2,7 +2,6 @@
 
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/utils";
-import { Trophy } from "lucide-react";
 
 interface PriceEntry {
   store: { name: string; slug: string; color: string | null };
@@ -11,105 +10,164 @@ interface PriceEntry {
   isOnSale: boolean;
   unitPrice: number | null;
   unitPriceUnit: string | null;
+  freshness?: "fresh" | "recent" | "stale";
+  sourceUrl?: string | null;
 }
 
-export function PriceComparison({ prices }: { prices: PriceEntry[] }) {
+/**
+ * Detect promotion text patterns from a product description.
+ * Tesco stores promo descriptions like "Clubcard Price" or "Any 4 for ..." in the product description field.
+ */
+function extractPromoText(description: string | null | undefined): string | null {
+  if (!description) return null;
+  // Match common Tesco promo patterns
+  if (/clubcard\s*price/i.test(description)) return "Clubcard Price";
+  if (/any\s+\d+\s+for/i.test(description)) {
+    const match = description.match(/any\s+\d+\s+for\s+€[\d.]+/i);
+    return match ? match[0] : "Multi-buy Deal";
+  }
+  if (/meal\s*deal/i.test(description)) return "Meal Deal";
+  if (/half\s*price/i.test(description)) return "Half Price";
+  if (/buy\s+\d+\s+get/i.test(description)) {
+    const match = description.match(/buy\s+\d+\s+get\s+\d+\s+free/i);
+    return match ? match[0] : "Multi-buy Deal";
+  }
+  return null;
+}
+
+interface PriceComparisonProps {
+  prices: PriceEntry[];
+  productDescription?: string | null;
+}
+
+export function PriceComparison({ prices, productDescription }: PriceComparisonProps) {
   if (prices.length === 0) return null;
 
   const sorted = [...prices].sort((a, b) => a.price - b.price);
   const cheapestPrice = sorted[0].price;
-  const maxPrice = sorted[sorted.length - 1].price;
-  const range = maxPrice - cheapestPrice;
+  const mostExpensive = sorted[sorted.length - 1];
+  const savings = mostExpensive.price - cheapestPrice;
+
+  // Try to extract promo text from description
+  const promoText = extractPromoText(productDescription);
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-base font-bold text-neutral-900">Price Comparison</h3>
-        {sorted.length > 1 && (
-          <span className="text-[11px] text-neutral-400">
-            {sorted.length} stores compared
-          </span>
-        )}
-      </div>
+      <h3 className="text-base font-bold text-neutral-900">Price Comparison</h3>
 
-      <div className="space-y-1.5">
-        {sorted.map((entry, index) => {
-          const isCheapest = index === 0 && sorted.length > 1;
-          const diff = entry.price - cheapestPrice;
+      {/* Price table */}
+      <div className="rounded-xl border border-neutral-200 overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-neutral-100 bg-neutral-50/60">
+              <th className="text-left py-2.5 px-3 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+                Store
+              </th>
+              <th className="text-right py-2.5 px-3 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+                Price
+              </th>
+              <th className="text-right py-2.5 px-3 text-xs font-semibold text-neutral-500 uppercase tracking-wider hidden sm:table-cell">
+                Unit Price
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((entry, index) => {
+              const isCheapest = index === 0 && sorted.length > 1;
+              // Show promo badge for Tesco if promo text exists and entry is on sale
+              const isTesco = entry.store.slug === "tesco";
+              const showPromo = isTesco && promoText && entry.isOnSale;
 
-          return (
-            <div
-              key={entry.store.slug}
-              className={`flex items-center gap-3 rounded-xl p-3 transition-all ${
-                isCheapest
-                  ? "bg-emerald-50 ring-1 ring-emerald-200"
-                  : "bg-neutral-50/80 hover:bg-neutral-50"
-              }`}
-            >
-              {/* Store color bar + name */}
-              <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                <div
-                  className="w-1 h-8 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: entry.store.color || "#999" }}
-                />
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-semibold text-neutral-800 truncate">
-                      {entry.store.name}
+              return (
+                <tr
+                  key={entry.store.slug}
+                  className={
+                    isCheapest
+                      ? "bg-emerald-50"
+                      : index % 2 === 0
+                        ? "bg-white"
+                        : "bg-neutral-50/40"
+                  }
+                >
+                  {/* Store name */}
+                  <td className="py-2.5 px-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div
+                        className="w-1 h-5 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: entry.store.color || "#999" }}
+                      />
+                      <span className={`font-medium ${isCheapest ? "text-emerald-800" : "text-neutral-800"}`}>
+                        {entry.store.name}
+                      </span>
+                      {isCheapest && (
+                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-full">
+                          CHEAPEST
+                        </span>
+                      )}
+                      {entry.isOnSale && !showPromo && (
+                        <Badge className="bg-orange-100 text-orange-700 border-0 text-[10px] px-1.5 py-0">
+                          SALE
+                        </Badge>
+                      )}
+                      {showPromo && (
+                        <Badge className="bg-blue-100 text-blue-700 border-0 text-[10px] px-1.5 py-0">
+                          {promoText}
+                        </Badge>
+                      )}
+                      {entry.freshness === "stale" && (
+                        <span className="text-[10px] text-amber-600 bg-amber-50 px-1 py-0.5 rounded" title="Price may be outdated">
+                          may be outdated
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  {/* Price */}
+                  <td className="py-2.5 px-3 text-right">
+                    <span className={`font-bold tabular-nums ${isCheapest ? "text-emerald-700" : "text-neutral-800"}`}>
+                      {entry.sourceUrl ? (
+                        <a
+                          href={entry.sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {formatPrice(entry.price)}
+                        </a>
+                      ) : (
+                        formatPrice(entry.price)
+                      )}
                     </span>
-                    {isCheapest && (
-                      <span className="inline-flex items-center gap-0.5 bg-emerald-600 text-white text-[11px] font-bold px-1.5 py-0.5 rounded-full">
-                        <Trophy className="h-2.5 w-2.5" />
-                        BEST
+                    {entry.isOnSale && entry.originalPrice && (
+                      <span className="block text-[11px] text-neutral-400 line-through tabular-nums">
+                        {formatPrice(entry.originalPrice)}
                       </span>
                     )}
-                    {entry.isOnSale && (
-                      <Badge className="bg-orange-100 text-orange-700 border-0 text-[11px] px-1.5 py-0">
-                        SALE
-                      </Badge>
+                  </td>
+                  {/* Unit price */}
+                  <td className="py-2.5 px-3 text-right hidden sm:table-cell">
+                    {entry.unitPrice && entry.unitPriceUnit ? (
+                      <span className="text-xs text-neutral-500 tabular-nums">
+                        {formatPrice(entry.unitPrice)}/{entry.unitPriceUnit}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-neutral-300">--</span>
                     )}
-                  </div>
-                  {entry.unitPrice && entry.unitPriceUnit && (
-                    <p className="text-[11px] text-neutral-400 tabular-nums">
-                      {formatPrice(entry.unitPrice)}/{entry.unitPriceUnit}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Price + diff */}
-              <div className="text-right flex-shrink-0">
-                <span
-                  className={`text-base font-extrabold tabular-nums ${
-                    isCheapest ? "text-emerald-700" : "text-neutral-800"
-                  }`}
-                >
-                  {formatPrice(entry.price)}
-                </span>
-                {entry.isOnSale && entry.originalPrice && (
-                  <p className="text-[11px] text-neutral-400 line-through tabular-nums">
-                    {formatPrice(entry.originalPrice)}
-                  </p>
-                )}
-                {!isCheapest && diff > 0.01 && (
-                  <p className="text-xs text-red-500 font-semibold tabular-nums">
-                    +{formatPrice(diff)}
-                  </p>
-                )}
-              </div>
-            </div>
-          );
-        })}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
 
       {/* Savings summary */}
-      {range > 0.05 && (
-        <div className="flex items-center justify-center gap-2 bg-emerald-50 rounded-xl py-2.5 px-4">
-          <span className="text-sm text-emerald-800">
-            Save <span className="font-bold">{formatPrice(range)}</span> by choosing{" "}
-            <span className="font-semibold">{sorted[0].store.name}</span>
-          </span>
-        </div>
+      {savings > 0.01 && sorted.length > 1 && (
+        <p className="text-sm text-emerald-700 bg-emerald-50 rounded-lg py-2 px-3 text-center">
+          Cheapest at <span className="font-bold">{sorted[0].store.name}</span>
+          {" "}&mdash; Save <span className="font-bold">{formatPrice(savings)}</span> vs{" "}
+          <span className="font-semibold">{mostExpensive.store.name}</span>
+        </p>
       )}
     </div>
   );

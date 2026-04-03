@@ -93,6 +93,7 @@ async function upsertProduct(
     weightUnit?: string;
     originalPrice?: number;
     isOnSale?: boolean;
+    barcode?: string;
   }
 ): Promise<boolean> {
   if (price <= 0 || !name || name.length < 3) return false;
@@ -108,27 +109,51 @@ async function upsertProduct(
 
   const cleanDesc = stripHtml(extra?.description);
 
-  const product = await prisma.product.upsert({
-    where: { slug: matchSlug },
-    create: {
-      name: canonName,
-      slug: matchSlug,
-      familySlug: famSlug,
-      brand: extra?.brand || null,
-      imageUrl: extra?.imageUrl || null,
-      description: cleanDesc || null,
-      weight: w || null,
-      weightUnit: wu || null,
-      categoryId: categoryId || null,
-      isActive: true,
-    },
-    update: {
-      ...(extra?.imageUrl ? { imageUrl: extra.imageUrl } : {}),
-      ...(extra?.brand ? { brand: extra.brand } : {}),
-      ...(cleanDesc ? { description: cleanDesc } : {}),
-      familySlug: famSlug,
-    },
-  });
+  // Try barcode-based matching first (most reliable), then fall back to slug
+  let product: Awaited<ReturnType<typeof prisma.product.upsert>>;
+
+  const barcodeMatch = extra?.barcode
+    ? await prisma.product.findUnique({ where: { barcode: extra.barcode } })
+    : null;
+
+  if (barcodeMatch) {
+    // Update existing product matched by barcode
+    product = await prisma.product.update({
+      where: { id: barcodeMatch.id },
+      data: {
+        ...(extra?.imageUrl ? { imageUrl: extra.imageUrl } : {}),
+        ...(extra?.brand ? { brand: extra.brand } : {}),
+        ...(cleanDesc ? { description: cleanDesc } : {}),
+        familySlug: famSlug,
+      },
+    });
+  } else {
+    // Fall back to slug-based matching
+    product = await prisma.product.upsert({
+      where: { slug: matchSlug },
+      create: {
+        name: canonName,
+        slug: matchSlug,
+        familySlug: famSlug,
+        brand: extra?.brand || null,
+        imageUrl: extra?.imageUrl || null,
+        description: cleanDesc || null,
+        weight: w || null,
+        weightUnit: wu || null,
+        barcode: extra?.barcode || null,
+        categoryId: categoryId || null,
+        isActive: true,
+      },
+      update: {
+        ...(extra?.imageUrl ? { imageUrl: extra.imageUrl } : {}),
+        ...(extra?.brand ? { brand: extra.brand } : {}),
+        ...(cleanDesc ? { description: cleanDesc } : {}),
+        familySlug: famSlug,
+        // Set barcode if product exists but doesn't have one yet
+        ...(extra?.barcode ? { barcode: extra.barcode } : {}),
+      },
+    });
+  }
 
   // Always update: mark old prices as not latest and create a new price record.
   // Wrapped in a transaction to ensure consistency.
@@ -198,6 +223,7 @@ function parseMi9Product(
       weightUnit: item.unitOfSize?.abbreviation || undefined,
       originalPrice: isOnSale ? item.priceNumeric : undefined,
       isOnSale,
+      barcode: item.sku || undefined,
     },
   };
 }
@@ -341,6 +367,7 @@ async function main() {
             weightUnit: p.weightUnit,
             originalPrice: p.originalPrice,
             isOnSale: p.isOnSale,
+            barcode: p.barcode,
           });
           if (ok) imported++;
         } catch {
@@ -372,6 +399,7 @@ async function main() {
             weightUnit: p.weightUnit,
             originalPrice: p.originalPrice,
             isOnSale: p.isOnSale,
+            barcode: p.barcode,
           });
           if (ok) imported++;
         } catch {

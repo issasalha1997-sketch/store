@@ -362,6 +362,9 @@ async function handleFamilyGrouped(
     orderByClause = `MIN(pr.price::numeric) ASC NULLS LAST, family_name ASC`;
   } else if (sortBy === "price_desc") {
     orderByClause = `MAX(pr.price::numeric) DESC NULLS LAST, family_name ASC`;
+  } else if (sortBy === "savings_desc") {
+    // Sort by absolute savings amount (originalPrice - price), biggest first
+    orderByClause = `MAX(COALESCE(pr."originalPrice"::numeric, 0) - pr.price::numeric) DESC NULLS LAST, family_name ASC`;
   } else {
     orderByClause = `store_count DESC, family_name ASC`;
   }
@@ -401,7 +404,14 @@ async function handleFamilyGrouped(
       (ARRAY_AGG(p.id ORDER BY pr.price ASC))[1] as cheapest_product_id,
       (ARRAY_AGG(p.slug ORDER BY pr.price ASC))[1] as cheapest_product_slug,
       (ARRAY_AGG(p.weight ORDER BY pr.price ASC))[1] as cheapest_weight,
-      (ARRAY_AGG(p."weightUnit" ORDER BY pr.price ASC))[1] as cheapest_weight_unit
+      (ARRAY_AGG(p."weightUnit" ORDER BY pr.price ASC))[1] as cheapest_weight_unit,
+      -- Deals/savings fields: best original price and the sale price for that item
+      MAX(pr."originalPrice"::numeric) as best_original_price,
+      (ARRAY_AGG(pr.price::numeric ORDER BY (COALESCE(pr."originalPrice"::numeric, 0) - pr.price::numeric) DESC NULLS LAST))[1] as best_sale_price,
+      (ARRAY_AGG(pr."originalPrice"::numeric ORDER BY (COALESCE(pr."originalPrice"::numeric, 0) - pr.price::numeric) DESC NULLS LAST))[1] as best_sale_original,
+      (ARRAY_AGG(s.name ORDER BY (COALESCE(pr."originalPrice"::numeric, 0) - pr.price::numeric) DESC NULLS LAST))[1] as best_deal_store,
+      (ARRAY_AGG(s.slug ORDER BY (COALESCE(pr."originalPrice"::numeric, 0) - pr.price::numeric) DESC NULLS LAST))[1] as best_deal_store_slug,
+      MAX(pr."scrapedAt") as latest_scraped_at
     FROM "Product" p
     JOIN "Price" pr ON pr."productId" = p.id AND pr."isLatest" = true
     JOIN "Store" s ON s.id = pr."storeId"
@@ -437,6 +447,12 @@ async function handleFamilyGrouped(
         cheapest_product_slug: string | null;
         cheapest_weight: number | null;
         cheapest_weight_unit: string | null;
+        best_original_price: number | null;
+        best_sale_price: number | null;
+        best_sale_original: number | null;
+        best_deal_store: string | null;
+        best_deal_store_slug: string | null;
+        latest_scraped_at: Date | null;
       }>
     >(dataQuery, ...dataParams),
   ]);
@@ -486,27 +502,54 @@ async function handleFamilyGrouped(
     }
   }
 
-  const data = families.map((f) => ({
-    familySlug: f.family_slug,
-    familyName: f.family_name,
-    slug: f.slug,
-    imageUrl: f.image_url,
-    brand: f.brand,
-    optionCount: Number(f.option_count),
-    productCount: Number(f.product_count),
-    storeCount: Number(f.store_count),
-    stores: storesByFamily.get(f.family_slug) ?? [],
-    minPrice: f.min_price != null ? Number(f.min_price) : null,
-    maxPrice: f.max_price != null ? Number(f.max_price) : null,
-    bestUnitPrice: f.best_unit_price != null ? Number(f.best_unit_price) : null,
-    bestUnitPriceUnit: f.best_unit_price_unit,
-    bestUnitStore: f.best_unit_store,
-    isOnSale: f.is_on_sale,
-    cheapestProductId: f.cheapest_product_id,
-    cheapestProductSlug: f.cheapest_product_slug,
-    cheapestWeight: f.cheapest_weight != null ? Number(f.cheapest_weight) : null,
-    cheapestWeightUnit: f.cheapest_weight_unit,
-  }));
+  const data = families.map((f) => {
+    // Compute savings: if there's a sale, calculate amount and percentage saved
+    const salePrice = f.best_sale_price != null ? Number(f.best_sale_price) : null;
+    const saleOriginal = f.best_sale_original != null ? Number(f.best_sale_original) : null;
+    const savingsAmount = saleOriginal && salePrice ? saleOriginal - salePrice : null;
+    const savingsPercent = saleOriginal && savingsAmount && saleOriginal > 0
+      ? Math.round((savingsAmount / saleOriginal) * 100)
+      : null;
+
+    return {
+      familySlug: f.family_slug,
+      familyName: f.family_name,
+      slug: f.slug,
+      imageUrl: f.image_url,
+      brand: f.brand,
+      optionCount: Number(f.option_count),
+      productCount: Number(f.product_count),
+      storeCount: Number(f.store_count),
+      stores: storesByFamily.get(f.family_slug) ?? [],
+      minPrice: f.min_price != null ? Number(f.min_price) : null,
+      maxPrice: f.max_price != null ? Number(f.max_price) : null,
+      bestUnitPrice: f.best_unit_price != null ? Number(f.best_unit_price) : null,
+      bestUnitPriceUnit: f.best_unit_price_unit,
+      bestUnitStore: f.best_unit_store,
+      isOnSale: f.is_on_sale,
+      cheapestProductId: f.cheapest_product_id,
+      cheapestProductSlug: f.cheapest_product_slug,
+      cheapestWeight: f.cheapest_weight != null ? Number(f.cheapest_weight) : null,
+      cheapestWeightUnit: f.cheapest_weight_unit,
+      // Deal-specific fields
+      savingsAmount,
+      savingsPercent,
+      salePrice,
+      originalPrice: saleOriginal,
+      dealStore: f.best_deal_store,
+      dealStoreSlug: f.best_deal_store_slug,
+      latestScrapedAt: f.latest_scraped_at,
+    };
+  });
+
+  // Compute the most recent scraped time across all results for metadata
+  const newestScrapedAt = families.reduce((latest, f) => {
+    if (f.latest_scraped_at) {
+      const t = new Date(f.latest_scraped_at).getTime();
+      return t > latest ? t : latest;
+    }
+    return latest;
+  }, 0);
 
   return NextResponse.json({
     data,
@@ -515,5 +558,6 @@ async function handleFamilyGrouped(
     limit,
     totalPages,
     grouped: true,
+    lastUpdated: newestScrapedAt > 0 ? new Date(newestScrapedAt).toISOString() : null,
   });
 }

@@ -203,16 +203,30 @@ async function stageProducts(
     const matchSlug = productMatchSlug(p.name, w, wu);
     const canonName = canonicalProductName(p.name, w, wu);
 
-    // Check if product already exists
-    const existingProduct = await prisma.product.findUnique({
-      where: { slug: matchSlug },
-      include: {
-        prices: {
-          where: { storeId: store.id, isLatest: true },
-          take: 1,
+    // Check if product already exists — try barcode first, then fall back to slug
+    let existingProduct = p.barcode
+      ? await prisma.product.findUnique({
+          where: { barcode: p.barcode },
+          include: {
+            prices: {
+              where: { storeId: store.id, isLatest: true },
+              take: 1,
+            },
+          },
+        })
+      : null;
+
+    if (!existingProduct) {
+      existingProduct = await prisma.product.findUnique({
+        where: { slug: matchSlug },
+        include: {
+          prices: {
+            where: { storeId: store.id, isLatest: true },
+            take: 1,
+          },
         },
-      },
-    });
+      });
+    }
 
     let existingProductId: string | null = null;
     let priceChange: number | null = null;

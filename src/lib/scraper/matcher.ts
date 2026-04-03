@@ -74,37 +74,67 @@ function normalizeWeight(weight: number | undefined, unit: string | undefined): 
 }
 
 /** Extract weight info from a product name.
- *  Returns the LAST matched weight as the canonical one,
- *  and strips ALL weight/size patterns from the name.
+ *  Separates true weight/volume units (g, kg, ml, l, cl) from count units (pack, pk, etc.).
+ *  Weight units take priority over count units for the canonical weight string.
+ *  If both exist (e.g. "6 Pack 360g"), the weight is used as primary and
+ *  count is appended as a suffix (e.g. "360g" with countStr "6pk").
  */
 function extractWeightFromName(name: string): { cleanName: string; weightStr: string } {
   let cleanName = name;
-  let weightStr = "";
+  let trueWeightStr = "";  // g, kg, ml, l, cl
+  let countStr = "";       // pack, pk, pcs, etc.
 
-  // Match patterns like: (227 g), 2L, 500g, 1.5kg, 6 Pack, 10pk, 200 ml, 1 Litre, 2.75litre, 3Ltr
-  const patterns = [
-    /\((\d+(?:\.\d+)?)\s*(kg|g|ml|l|cl|pk|pack|pce|pcs|ea|each)\)/gi,
+  // Weight/volume patterns (true physical weight)
+  const weightPatterns = [
+    /\((\d+(?:\.\d+)?)\s*(kg|g|ml|l|cl)\)/gi,
     /\b(\d+(?:\.\d+)?)\s*(litre|liter|litres|liters|ltr)\b/gi,
     /\b(\d+(?:\.\d+)?)\s*(kg|g|ml|l|cl)\b/gi,
+  ];
+
+  // Count patterns (pack size)
+  const countPatterns = [
+    /\((\d+(?:\.\d+)?)\s*(pk|pack|pce|pcs|ea|each)\)/gi,
     /\b(\d+)\s*(pack|pk)\b/gi,
     /\b(\d+)\s*(piece|pieces|pce|pcs|each|ea|s)\b/gi,
   ];
 
-  for (const pat of patterns) {
+  // Extract true weight (keep LAST matched weight unit)
+  for (const pat of weightPatterns) {
     let match;
     while ((match = pat.exec(cleanName)) !== null) {
       const weight = parseFloat(match[1]);
       let unit = match[2].toLowerCase();
-      // Normalize "litre" → "l", "ltr" → "l"
       if (unit.startsWith("litre") || unit.startsWith("liter") || unit === "ltr") unit = "l";
+      const normalized = normalizeWeight(weight, unit);
+      if (normalized) trueWeightStr = normalized;
+    }
+    pat.lastIndex = 0;
+    cleanName = cleanName.replace(pat, "").trim();
+  }
+
+  // Extract count (keep LAST matched count unit)
+  for (const pat of countPatterns) {
+    let match;
+    while ((match = pat.exec(cleanName)) !== null) {
+      const weight = parseFloat(match[1]);
+      let unit = match[2].toLowerCase();
       if (unit === "piece" || unit === "pieces") unit = "each";
       const normalized = normalizeWeight(weight, unit);
-      if (normalized) weightStr = normalized; // keep the last (most specific) one
+      if (normalized) countStr = normalized;
     }
-    // Reset regex lastIndex
     pat.lastIndex = 0;
-    // Remove ALL matches of this pattern from the name
     cleanName = cleanName.replace(pat, "").trim();
+  }
+
+  // Weight units take priority; include count as a separate suffix if both exist
+  let weightStr: string;
+  if (trueWeightStr && countStr) {
+    // e.g. "360g" + "6pk" → "360g-6pk"
+    weightStr = `${trueWeightStr}-${countStr}`;
+  } else if (trueWeightStr) {
+    weightStr = trueWeightStr;
+  } else {
+    weightStr = countStr;
   }
 
   return { cleanName, weightStr };
@@ -152,8 +182,8 @@ function normalizeProductVariations(name: string): string {
     .replace(/\bbeef\s*mince\s*(?:steak)?\b/gi, "Beef Mince")
     .replace(/\bbeef\s+beef\b/gi, "Beef")
     .replace(/\bstreaky\s*bacon\s*rashers?\b/gi, "Streaky Bacon")
-    .replace(/\bback\s*bacon\s*rashers?\b/gi, "Back Bacon")
-    .replace(/\bbacon\s*rashers?\b/gi, "Back Bacon")
+    .replace(/\bback\s*bacon\s*rashers?\b/gi, "Rashers")
+    .replace(/\bbacon\s*rashers?\b/gi, "Rashers")
     .replace(/\bpork\s*sausages?\b/gi, "Pork Sausages")
     .replace(/\bsausages?\b/gi, "Sausages")
     .replace(/\bminced?\s*beef\b/gi, "Beef Mince")
@@ -183,7 +213,73 @@ function normalizeProductVariations(name: string): string {
     .replace(/\blaundry\s*(?:detergent|liquid|capsules?)\b/gi, "Laundry Detergent")
     .replace(/\bfabric\s*(?:conditioner|softener)\b/gi, "Fabric Conditioner")
     // Spelling normalization
-    .replace(/\bbeanz\b/gi, "Beans");
+    .replace(/\bbeanz\b/gi, "Beans")
+    // ── UK/Ireland synonym normalization (Irish term = canonical) ──
+    // Cling film variants
+    .replace(/\bcling\s*wrap\b/gi, "Cling Film")
+    .replace(/\bplastic\s*wrap\b/gi, "Cling Film")
+    .replace(/\bcling\s*film\b/gi, "Cling Film")
+    // Kitchen roll variants
+    .replace(/\bpaper\s*towel(?:s)?\b/gi, "Kitchen Roll")
+    // (kitchen towel/roll already handled above)
+    // Washing up liquid variants
+    .replace(/\bdish\s*soap\b/gi, "Washing Up Liquid")
+    .replace(/\bdishwashing\s*liquid\b/gi, "Washing Up Liquid")
+    // (washing up liquid already handled above)
+    // Spring onion variants
+    .replace(/\bscallion(?:s)?\b/gi, "Spring Onion")
+    .replace(/\bgreen\s*onion(?:s)?\b/gi, "Spring Onion")
+    .replace(/\bspring\s*onion(?:s)?\b/gi, "Spring Onion")
+    // Courgette / zucchini
+    .replace(/\bzucchini(?:s)?\b/gi, "Courgette")
+    .replace(/\bcourgette(?:s)?\b/gi, "Courgette")
+    // Aubergine / eggplant
+    .replace(/\beggplant(?:s)?\b/gi, "Aubergine")
+    .replace(/\baubergine(?:s)?\b/gi, "Aubergine")
+    // Rocket / arugula
+    .replace(/\barugula\b/gi, "Rocket")
+    .replace(/\brucola\b/gi, "Rocket")
+    // Prawns / shrimp
+    .replace(/\bshrimp(?:s)?\b/gi, "Prawns")
+    .replace(/\bprawn(?:s)?\b/gi, "Prawns")
+    // Tinned / canned
+    .replace(/\bcanned\b/gi, "Tinned")
+    .replace(/\btinned\b/gi, "Tinned")
+    // Porridge / oatmeal
+    .replace(/\boatmeal\b/gi, "Porridge")
+    .replace(/\bporridge\s*oats\b/gi, "Porridge")
+    .replace(/\bporridge\b/gi, "Porridge")
+    // Bicarbonate of soda variants
+    .replace(/\bbaking\s*soda\b/gi, "Bicarbonate Of Soda")
+    .replace(/\bbicarb\b/gi, "Bicarbonate Of Soda")
+    .replace(/\bbicarbonate\s*of\s*soda\b/gi, "Bicarbonate Of Soda")
+    // Caster sugar variants
+    .replace(/\bcastor\s*sugar\b/gi, "Caster Sugar")
+    .replace(/\bcaster\s*sugar\b/gi, "Caster Sugar")
+    // Icing sugar variants
+    .replace(/\bpowdered\s*sugar\b/gi, "Icing Sugar")
+    .replace(/\bconfectioners?\s*sugar\b/gi, "Icing Sugar")
+    .replace(/\bicing\s*sugar\b/gi, "Icing Sugar")
+    // Double cream variants
+    .replace(/\bheavy\s*cream\b/gi, "Double Cream")
+    .replace(/\bdouble\s*cream\b/gi, "Double Cream")
+    // Single cream variants
+    .replace(/\blight\s*cream\b/gi, "Single Cream")
+    .replace(/\bpouring\s*cream\b/gi, "Single Cream")
+    .replace(/\bsingle\s*cream\b/gi, "Single Cream")
+    // Streaky bacon variants
+    .replace(/\bbacon\s*strips?\b/gi, "Streaky Bacon")
+    // (streaky bacon already handled in Meat section above)
+    // Rashers variants
+    .replace(/\bback\s*bacon\b/gi, "Rashers")
+    // (bacon rashers / back bacon rashers already handled in Meat section above)
+    // Bread roll variants
+    .replace(/\bsoft\s*roll(?:s)?\b/gi, "Bread Roll")
+    .replace(/\bbap(?:s)?\b/gi, "Bread Roll")
+    // Nappy variants
+    .replace(/\bdiaper(?:s)?\b/gi, "Nappies")
+    .replace(/\bnappies\b/gi, "Nappies")
+    .replace(/\bnappy\b/gi, "Nappy");
 
   // Remove filler words that differ between stores
   n = n
@@ -223,6 +319,9 @@ export function canonicalProductName(
   weightUnit?: string
 ): string {
   let n = name.trim();
+
+  // Normalize diacritics (e.g. "crème" → "creme", "José" → "Jose")
+  n = n.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
   // Strip store/brand prefixes (case-insensitive)
   for (const prefix of ALL_PREFIXES) {
@@ -375,13 +474,20 @@ export function productFamilySlug(
 
   // To slug — then strip connector words so "Tomato and Basil" = "Tomato Basil"
   // Stores use these inconsistently: "Salt & Vinegar" vs "Salt and Vinegar" vs "Salt Vinegar"
-  return clean
+  let slug = clean
     .toLowerCase()
     .replace(/['']/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/-(?:and|with|in|of|the|for|a|an|by|on|to|from|de|au|la|le|al)-/g, "-")
     .replace(/--+/g, "-")
     .replace(/^-+|-+$/g, "");
+
+  // NOTE: We intentionally do NOT sort words alphabetically here.
+  // Alphabetical sorting creates false positive matches (e.g. "cream-tomato-soup" matching
+  // unrelated products). It's better to miss a match than create a false positive.
+  // The natural word order after normalization is preserved.
+
+  return slug;
 }
 
 function escapeRegex(str: string): string {

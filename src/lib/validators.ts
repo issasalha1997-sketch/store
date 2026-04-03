@@ -7,7 +7,7 @@ export const searchParamsSchema = z.object({
   minPrice: z.coerce.number().min(0).optional(),
   maxPrice: z.coerce.number().min(0).optional(),
   onSaleOnly: z.coerce.boolean().optional(),
-  sortBy: z.enum(["price_asc", "price_desc", "name", "relevance"]).optional(),
+  sortBy: z.enum(["price_asc", "price_desc", "name", "relevance", "savings_desc"]).optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });

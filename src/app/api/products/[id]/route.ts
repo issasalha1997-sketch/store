@@ -175,6 +175,60 @@ export async function GET(
       });
     }
 
+    // Compute freshness for each price based on scrapedAt
+    const now = Date.now();
+    function getFreshness(scrapedAt: Date): "fresh" | "recent" | "stale" {
+      const ageMs = now - new Date(scrapedAt).getTime();
+      const ageHours = ageMs / 3600000;
+      if (ageHours < 24) return "fresh";
+      if (ageHours < 48) return "recent";
+      return "stale";
+    }
+
+    // Compute overall price freshness from the most recent scraped price
+    const latestScrapedAt = product.prices.reduce((latest, p) => {
+      const t = new Date(p.scrapedAt).getTime();
+      return t > latest ? t : latest;
+    }, 0);
+    const overallFreshness = latestScrapedAt > 0 ? getFreshness(new Date(latestScrapedAt)) : "stale";
+
+    // Summarize price history into a trend
+    let priceTrend: {
+      direction: "down" | "up" | "stable";
+      oldPrice: number | null;
+      newPrice: number | null;
+      changePercent: number | null;
+      dataPoints: number;
+    } | null = null;
+
+    if (priceHistory.length >= 2) {
+      // Group by store, find the store with the most data points
+      const byStore = new Map<string, Array<{ price: number; scrapedAt: Date }>>();
+      for (const ph of priceHistory) {
+        const storeId = ph.store.id;
+        if (!byStore.has(storeId)) byStore.set(storeId, []);
+        byStore.get(storeId)!.push({ price: Number(ph.price), scrapedAt: ph.scrapedAt });
+      }
+      // Pick the store with most data points
+      let bestStore: Array<{ price: number; scrapedAt: Date }> = [];
+      for (const entries of byStore.values()) {
+        if (entries.length > bestStore.length) bestStore = entries;
+      }
+      if (bestStore.length >= 2) {
+        const oldest = bestStore[0].price;
+        const newest = bestStore[bestStore.length - 1].price;
+        const diff = newest - oldest;
+        const pct = oldest > 0 ? Math.round((diff / oldest) * 100) : 0;
+        priceTrend = {
+          direction: diff < -0.01 ? "down" : diff > 0.01 ? "up" : "stable",
+          oldPrice: oldest,
+          newPrice: newest,
+          changePercent: pct,
+          dataPoints: bestStore.length,
+        };
+      }
+    }
+
     return NextResponse.json({
       ...productData,
       prices: product.prices.map((p) => ({
@@ -185,8 +239,11 @@ export async function GET(
         unitPrice: p.unitPrice ? Number(p.unitPrice) : null,
         unitPriceUnit: p.unitPriceUnit,
         scrapedAt: p.scrapedAt,
+        freshness: getFreshness(p.scrapedAt),
+        sourceUrl: p.sourceUrl,
         store: p.store,
       })),
+      overallFreshness,
       averageRating: averageRating ? Math.round(averageRating * 10) / 10 : null,
       reviewCount,
       reviews,
@@ -197,6 +254,7 @@ export async function GET(
         scrapedAt: p.scrapedAt,
         store: p.store,
       })),
+      priceTrend,
       familyMembers: familyMembers.length > 1 ? familyMembers : [],
       similarProducts: await getSimilarProducts(product.id, product.categoryId, product.familySlug),
     });

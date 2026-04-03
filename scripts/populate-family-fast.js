@@ -138,12 +138,21 @@ function familySlug(name) {
   n = n.replace(/\s*&\s*/g, " and ");
 
   // To slug — then strip connector words so "Tomato and Basil" = "Tomato Basil"
-  return n.trim().toLowerCase()
+  let slug = n.trim().toLowerCase()
     .replace(/['']/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/-(?:and|with|in|of|the|for|a|an|by|on|to|from|de|au|la|le|al)-/g, "-")
     .replace(/--+/g, "-")
     .replace(/^-+|-+$/g, "");
+
+  // Sort words alphabetically to handle word-order differences across stores
+  // e.g. "nappies-size-5" vs "size-5-nappies", "cream-tomato-soup" vs "tomato-cream-soup"
+  const parts = slug.split("-").filter(p => p.length > 0);
+  if (parts.length >= 2) {
+    slug = parts.sort().join("-");
+  }
+
+  return slug;
 }
 
 async function run() {
