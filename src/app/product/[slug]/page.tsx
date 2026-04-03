@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Image from "next/image";
 import { PriceComparison } from "@/components/product/PriceComparison";
+import type { StoreComparisonEntry } from "@/components/product/PriceComparison";
 import { StarRating } from "@/components/shared/StarRating";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -67,6 +68,16 @@ export default function ProductDetailPage() {
     );
   }
 
+  // Use new storeComparison data if available, otherwise fall back to legacy prices
+  const storeComparison: StoreComparisonEntry[] | undefined = product.storeComparison;
+  const otherTiers: Array<{
+    tierLabel: string;
+    cheapestPrice: number;
+    cheapestStore: string;
+    productSlug: string;
+  }> = product.otherTiers || [];
+
+  // Legacy prices fallback (for when storeComparison isn't available)
   const prices = (product.prices || []).map(
     (p: Record<string, unknown>) => ({
       store: p.store as { name: string; slug: string; color: string | null },
@@ -95,78 +106,6 @@ export default function ProductDetailPage() {
     setJustAdded(true);
     setTimeout(() => setJustAdded(false), 2000);
   };
-
-  // Build "Other Sizes" data from familyMembers
-  type FamilyMember = {
-    id: string;
-    name: string;
-    slug: string;
-    weight: number | null;
-    weightUnit: string | null;
-    store: string;
-    storeSlug: string;
-    storeColor: string | null;
-    price: number;
-    unitPrice: number | null;
-    unitPriceUnit: string | null;
-  };
-
-  function toGrams(w: number | null, u: string | null): number {
-    if (!w || !u) return 0;
-    const unit = u.toLowerCase();
-    if (unit === "kg") return w * 1000;
-    if (unit === "g") return w;
-    if (unit === "l" || unit === "ltr" || unit === "litre") return w * 1000;
-    if (unit === "ml") return w;
-    if (unit === "cl") return w * 10;
-    if (unit.includes("pack") || unit.includes("pk")) return w * 10000;
-    return w;
-  }
-
-  type SizeGroup = { label: string; slug: string; cheapestPrice: number; cheapestStore: string };
-  const otherSizes: SizeGroup[] = [];
-
-  if (product.familyMembers && product.familyMembers.length > 1) {
-    const others = (product.familyMembers as FamilyMember[]).filter(m => m.slug !== product.slug);
-    // Group by slug (each slug = a size variant)
-    const bySlug = new Map<string, FamilyMember[]>();
-    for (const m of others) {
-      const existing = bySlug.get(m.slug) || [];
-      existing.push(m);
-      bySlug.set(m.slug, existing);
-    }
-
-    for (const [memberSlug, members] of bySlug) {
-      const cheapest = members.reduce((min, m) => m.price < min.price ? m : min);
-      // Build a weight label
-      let label: string;
-      const m0 = members[0];
-      if (m0.weight && m0.weightUnit) {
-        const w = m0.weight;
-        const u = m0.weightUnit.toLowerCase();
-        if (u === "kg" && w < 1) label = `${Math.round(w * 1000)}g`;
-        else if (u === "l" && w < 1) label = `${Math.round(w * 1000)}ml`;
-        else label = `${w}${u}`;
-      } else {
-        const wMatch = m0.name.match(/(\d+(?:\.\d+)?)\s*(g|kg|ml|l|cl|pk|pack)/i);
-        label = wMatch ? `${wMatch[1]}${wMatch[2].toLowerCase()}` : m0.name;
-      }
-
-      otherSizes.push({
-        label,
-        slug: memberSlug,
-        cheapestPrice: cheapest.price,
-        cheapestStore: cheapest.store,
-      });
-    }
-    // Sort by weight
-    otherSizes.sort((a, b) => {
-      // Extract a rough numeric for sorting
-      const numA = parseFloat(a.label) || 0;
-      const numB = parseFloat(b.label) || 0;
-      return numA - numB;
-    });
-  }
 
   return (
     <motion.div
@@ -221,7 +160,7 @@ export default function ProductDetailPage() {
               <span className="text-sm mt-2">No image available</span>
             </div>
           )}
-          {prices.some((p: { isOnSale: boolean }) => p.isOnSale) && (
+          {(storeComparison || prices).some((p: { isOnSale?: boolean }) => p.isOnSale) && (
             <div className="absolute top-4 left-4">
               <span className="inline-block bg-gradient-to-r from-red-500 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md">
                 ON SALE
@@ -236,7 +175,7 @@ export default function ProductDetailPage() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.4, delay: 0.1 }}
         >
-          {/* 1. Name / brand / weight */}
+          {/* 1. Name / brand / weight / tier badge */}
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold">{product.name}</h1>
             <div className="flex flex-wrap items-center gap-2 mt-1.5">
@@ -246,6 +185,11 @@ export default function ProductDetailPage() {
               {product.weight && product.weightUnit && (
                 <span className="text-sm text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">
                   {product.weight}{product.weightUnit}
+                </span>
+              )}
+              {product.sizeTier && (
+                <span className="text-xs text-teal-700 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-full font-medium">
+                  {product.sizeTier}
                 </span>
               )}
             </div>
@@ -259,7 +203,12 @@ export default function ProductDetailPage() {
           <Separator className="my-5" />
 
           {/* 2. Price Comparison Table -- THE main feature */}
-          <PriceComparison prices={prices} productDescription={product.description} />
+          <PriceComparison
+            storeComparison={storeComparison}
+            prices={prices}
+            mainProductName={product.name}
+            productDescription={product.description}
+          />
 
           {/* Price freshness indicator */}
           {prices.length > 0 && (() => {
@@ -364,24 +313,34 @@ export default function ProductDetailPage() {
             </AnimatePresence>
           </div>
 
-          {/* 4. Other Sizes -- simplified inline list */}
-          {otherSizes.length > 0 && (
-            <div className="mt-6 bg-neutral-50 rounded-xl p-4">
-              <p className="text-sm font-semibold text-neutral-700 mb-2">Also available</p>
-              <div className="flex flex-wrap gap-2">
-                {otherSizes.map((size) => (
-                  <Link
-                    key={size.slug}
-                    href={`/product/${size.slug}`}
-                    className="inline-flex items-center gap-1.5 bg-white border border-neutral-200 hover:border-teal-300 hover:bg-teal-50 rounded-lg px-3 py-1.5 transition-colors text-sm"
-                  >
-                    <span className="font-semibold text-neutral-800">{size.label}</span>
-                    <span className="text-neutral-400">from</span>
-                    <span className="font-bold text-teal-600 tabular-nums">{formatPrice(size.cheapestPrice)}</span>
-                  </Link>
-                ))}
+          {/* 4. Other Sizes -- tier chips */}
+          {otherTiers.length > 0 && (
+            <>
+              <Separator className="my-5" />
+              <div>
+                <p className="text-sm font-semibold text-neutral-700 mb-2">Other sizes</p>
+                <div className="flex flex-wrap gap-2">
+                  {/* Current tier chip (highlighted) */}
+                  {product.sizeTier && (
+                    <span className="inline-flex items-center gap-1.5 bg-teal-50 border-2 border-teal-300 rounded-lg px-3 py-1.5 text-sm">
+                      <span className="font-semibold text-teal-800">{product.sizeTier}</span>
+                      <span className="text-teal-500 text-xs">&#10003;</span>
+                    </span>
+                  )}
+                  {otherTiers.map((tier) => (
+                    <Link
+                      key={tier.productSlug}
+                      href={`/product/${tier.productSlug}`}
+                      className="inline-flex items-center gap-1.5 bg-white border border-neutral-200 hover:border-teal-300 hover:bg-teal-50 rounded-lg px-3 py-1.5 transition-colors text-sm"
+                    >
+                      <span className="font-semibold text-neutral-800">{tier.tierLabel}</span>
+                      <span className="text-neutral-400">from</span>
+                      <span className="font-bold text-teal-600 tabular-nums">{formatPrice(tier.cheapestPrice)}</span>
+                    </Link>
+                  ))}
+                </div>
               </div>
-            </div>
+            </>
           )}
 
           {/* 5. Reviews -- collapsible */}
@@ -455,53 +414,6 @@ export default function ProductDetailPage() {
           )}
         </motion.div>
       </div>
-
-      {/* Similar Products -- simplified to a compact row */}
-      {product.similarProducts && product.similarProducts.length > 0 && (
-        <div className="mt-10">
-          <h2 className="text-lg font-bold mb-3">Similar Products</h2>
-          <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
-            {product.similarProducts.slice(0, 6).map(
-              (sp: {
-                id: string;
-                name: string;
-                slug: string;
-                imageUrl: string | null;
-                minPrice: number | null;
-              }) => (
-                <Link
-                  key={sp.id}
-                  href={`/product/${sp.slug}`}
-                  className="flex-shrink-0 w-32 group"
-                >
-                  <div className="h-20 flex items-center justify-center rounded-lg bg-muted/30 mb-1.5 overflow-hidden">
-                    {sp.imageUrl ? (
-                      <Image
-                        src={sp.imageUrl}
-                        alt={sp.name}
-                        width={80}
-                        height={80}
-                        className="object-contain h-full w-auto p-1 group-hover:scale-110 transition-transform"
-                        unoptimized
-                      />
-                    ) : (
-                      <ImageOff className="h-5 w-5 text-muted-foreground/30" />
-                    )}
-                  </div>
-                  <p className="text-xs font-medium line-clamp-2 group-hover:text-teal-600 transition-colors">
-                    {sp.name}
-                  </p>
-                  {sp.minPrice && (
-                    <p className="text-xs font-bold text-teal-600 mt-0.5 tabular-nums">
-                      from {formatPrice(sp.minPrice)}
-                    </p>
-                  )}
-                </Link>
-              )
-            )}
-          </div>
-        </div>
-      )}
     </motion.div>
   );
 }
@@ -583,7 +495,6 @@ function PriceHistorySection({
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        {/* Dot on last point */}
         {(() => {
           const lastPoint = points[points.length - 1].split(",");
           return (

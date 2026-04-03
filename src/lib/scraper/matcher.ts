@@ -494,6 +494,81 @@ function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+// ─── Size tier grouping ────────────────────────────────────────────
+
+export type SizeTier = 'single-serve' | 'small' | 'regular' | 'large' | 'multipack';
+
+/**
+ * Determine the size tier for a product based on its weight, unit, and name.
+ * Used to sub-group products within a family (e.g. Coca-Cola → single-serve, regular, large, multipack).
+ */
+export function getSizeTier(weight: number | null, weightUnit: string | null, productName: string): SizeTier {
+  // 1. Check for multipack indicators in the product name
+  const multipackPattern = /\b(\d+)\s*(?:x\s*\d+|×\s*\d+|pack|pk|multi\s*pack|multipack)\b/i;
+  if (multipackPattern.test(productName)) {
+    return 'multipack';
+  }
+
+  // 2. If no weight info, return 'regular' as default
+  if (weight == null || weightUnit == null) {
+    return 'regular';
+  }
+
+  // 3. Normalize weight to base units
+  const u = weightUnit.toLowerCase().replace(/\s/g, '');
+
+  // Pack/count units → multipack
+  if (u === 'pk' || u === 'pack' || u === 'pcs' || u === 'pce' || u === 'units') {
+    if (weight > 1) return 'multipack';
+    return 'regular';
+  }
+
+  // Normalize to grams
+  let grams: number | null = null;
+  if (u === 'kg') grams = weight * 1000;
+  else if (u === 'g') grams = weight;
+
+  // Normalize to ml
+  let ml: number | null = null;
+  if (u === 'l' || u === 'ltr' || u === 'litre' || u === 'litres' || u === 'liter' || u === 'liters') {
+    ml = weight * 1000;
+  } else if (u === 'cl') {
+    ml = weight * 10;
+  } else if (u === 'ml') {
+    ml = weight;
+  }
+
+  // 4. Categorize by size
+  if (ml != null) {
+    // Liquids
+    if (ml <= 400) return 'single-serve';
+    if (ml <= 750) return 'small';
+    if (ml <= 1500) return 'regular';
+    return 'large';
+  }
+
+  if (grams != null) {
+    // Solids
+    if (grams <= 150) return 'single-serve';
+    if (grams <= 500) return 'small';
+    if (grams <= 1500) return 'regular';
+    return 'large';
+  }
+
+  // Unknown unit — fall back to regular
+  return 'regular';
+}
+
+export function getSizeTierLabel(tier: SizeTier): string {
+  switch (tier) {
+    case 'single-serve': return 'Single Serve';
+    case 'small': return 'Small';
+    case 'regular': return 'Regular';
+    case 'large': return 'Large';
+    case 'multipack': return 'Multipack';
+  }
+}
+
 // ─── Re-export legacy functions for backward compat ─────────────────
 
 /** @deprecated Use canonicalProductName instead */

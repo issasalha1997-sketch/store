@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getSizeTier, getSizeTierLabel } from "@/lib/scraper/matcher";
+import type { SizeTier } from "@/lib/scraper/matcher";
 
 export async function GET(
   _request: NextRequest,
@@ -229,6 +231,151 @@ export async function GET(
       }
     }
 
+    // ─── NEW: Build storeComparison (best price per store across same-tier siblings) ───
+    const mainTier = getSizeTier(product.weight, product.weightUnit, product.name);
+
+    // Collect all products in the same tier: the main product + siblings that share the tier
+    type PriceCandidate = {
+      storeName: string;
+      storeSlug: string;
+      storeColor: string | null;
+      price: number;
+      originalPrice: number | null;
+      isOnSale: boolean;
+      productName: string;
+      productSlug: string;
+      unitPrice: string | null;
+      freshness: "fresh" | "recent" | "stale";
+      scrapedAt: Date;
+    };
+
+    const allCandidates: PriceCandidate[] = [];
+
+    // Add main product prices
+    for (const p of product.prices) {
+      allCandidates.push({
+        storeName: p.store.name,
+        storeSlug: p.store.slug,
+        storeColor: p.store.color,
+        price: Number(p.price),
+        originalPrice: p.originalPrice ? Number(p.originalPrice) : null,
+        isOnSale: p.isOnSale,
+        productName: product.name,
+        productSlug: product.slug,
+        unitPrice: p.unitPrice && p.unitPriceUnit
+          ? `${Number(p.unitPrice).toFixed(2)}/${p.unitPriceUnit}`
+          : null,
+        freshness: getFreshness(p.scrapedAt),
+        scrapedAt: p.scrapedAt,
+      });
+    }
+
+    // Fetch siblings if we have a familySlug (reuse already-fetched siblings data)
+    let otherTiers: Array<{
+      tierLabel: string;
+      cheapestPrice: number;
+      cheapestStore: string;
+      productSlug: string;
+    }> = [];
+
+    if (product.familySlug) {
+      const siblingProducts = await prisma.product.findMany({
+        where: {
+          familySlug: product.familySlug,
+          isActive: true,
+          id: { not: product.id },
+        },
+        include: {
+          prices: {
+            where: { isLatest: true },
+            include: { store: true },
+          },
+        },
+      });
+
+      for (const sib of siblingProducts) {
+        const sibTier = getSizeTier(sib.weight, sib.weightUnit, sib.name);
+        if (sibTier === mainTier) {
+          // Same tier — include as price candidate
+          for (const p of sib.prices) {
+            allCandidates.push({
+              storeName: p.store.name,
+              storeSlug: p.store.slug,
+              storeColor: p.store.color,
+              price: Number(p.price),
+              originalPrice: p.originalPrice ? Number(p.originalPrice) : null,
+              isOnSale: p.isOnSale,
+              productName: sib.name,
+              productSlug: sib.slug,
+              unitPrice: p.unitPrice && p.unitPriceUnit
+                ? `${Number(p.unitPrice).toFixed(2)}/${p.unitPriceUnit}`
+                : null,
+              freshness: getFreshness(p.scrapedAt),
+              scrapedAt: p.scrapedAt,
+            });
+          }
+        }
+      }
+
+      // ─── Build otherTiers: group non-main-tier siblings by tier ───
+      const tierMap = new Map<SizeTier, {
+        tierLabel: string;
+        cheapestPrice: number;
+        cheapestStore: string;
+        productSlug: string;
+      }>();
+
+      for (const sib of siblingProducts) {
+        const sibTier = getSizeTier(sib.weight, sib.weightUnit, sib.name);
+        if (sibTier === mainTier) continue; // skip same tier
+        for (const p of sib.prices) {
+          const price = Number(p.price);
+          const existing = tierMap.get(sibTier);
+          if (!existing || price < existing.cheapestPrice) {
+            tierMap.set(sibTier, {
+              tierLabel: getSizeTierLabel(sibTier),
+              cheapestPrice: price,
+              cheapestStore: p.store.name,
+              productSlug: sib.slug,
+            });
+          }
+        }
+      }
+
+      otherTiers = Array.from(tierMap.values());
+      // Sort tiers in logical size order
+      const tierOrder: SizeTier[] = ['single-serve', 'small', 'regular', 'large', 'multipack'];
+      otherTiers.sort((a, b) => {
+        const aIdx = tierOrder.indexOf(a.tierLabel.toLowerCase().replace(' ', '-') as SizeTier);
+        const bIdx = tierOrder.indexOf(b.tierLabel.toLowerCase().replace(' ', '-') as SizeTier);
+        return aIdx - bIdx;
+      });
+    }
+
+    // Pick the cheapest price per store from allCandidates
+    const storeMap = new Map<string, PriceCandidate>();
+    for (const c of allCandidates) {
+      const existing = storeMap.get(c.storeSlug);
+      if (!existing || c.price < existing.price) {
+        storeMap.set(c.storeSlug, c);
+      }
+    }
+
+    const storeComparison = Array.from(storeMap.values())
+      .sort((a, b) => a.price - b.price)
+      .map((c) => ({
+        storeName: c.storeName,
+        storeSlug: c.storeSlug,
+        storeColor: c.storeColor,
+        price: c.price,
+        originalPrice: c.originalPrice,
+        isOnSale: c.isOnSale,
+        productName: c.productName,
+        productSlug: c.productSlug,
+        unitPrice: c.unitPrice,
+        freshness: c.freshness,
+      }));
+
     return NextResponse.json({
       ...productData,
       prices: product.prices.map((p) => ({
@@ -255,6 +402,9 @@ export async function GET(
         store: p.store,
       })),
       priceTrend,
+      sizeTier: getSizeTierLabel(mainTier),
+      storeComparison,
+      otherTiers,
       familyMembers: familyMembers.length > 1 ? familyMembers : [],
       similarProducts: await getSimilarProducts(product.id, product.categoryId, product.familySlug),
     });

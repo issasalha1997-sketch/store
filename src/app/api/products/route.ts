@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { searchParamsSchema } from "@/lib/validators";
+import { getSizeTier, getSizeTierLabel } from "@/lib/scraper/matcher";
+import type { SizeTier } from "@/lib/scraper/matcher";
 import type { Prisma } from "@prisma/client";
 
 // Simple in-memory rate limiter (per serverless instance)
@@ -308,8 +310,9 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * Family-grouped search: returns one result per product family.
- * Uses database-level GROUP BY instead of loading all products into memory.
+ * Family-grouped search: returns one result per product family + size tier.
+ * First uses DB-level GROUP BY for family pagination, then fetches all products
+ * for those families and sub-groups by computed size tier in JS.
  */
 async function handleFamilyGrouped(
   q: string | undefined,
@@ -356,14 +359,13 @@ async function handleFamilyGrouped(
 
   const whereClause = conditions.join(" AND ");
 
-  // Determine ORDER BY
+  // Determine ORDER BY (at the family level for pagination)
   let orderByClause: string;
   if (sortBy === "price_asc") {
     orderByClause = `MIN(pr.price::numeric) ASC NULLS LAST, family_name ASC`;
   } else if (sortBy === "price_desc") {
     orderByClause = `MAX(pr.price::numeric) DESC NULLS LAST, family_name ASC`;
   } else if (sortBy === "savings_desc") {
-    // Sort by absolute savings amount (originalPrice - price), biggest first
     orderByClause = `MAX(COALESCE(pr."originalPrice"::numeric, 0) - pr.price::numeric) DESC NULLS LAST, family_name ASC`;
   } else {
     orderByClause = `store_count DESC, family_name ASC`;
@@ -371,7 +373,7 @@ async function handleFamilyGrouped(
 
   const offset = (page - 1) * limit;
 
-  // Count total families
+  // Count total families (pagination is still at the family level)
   const countQuery = `
     SELECT COUNT(*) as total FROM (
       SELECT p."familySlug"
@@ -384,33 +386,12 @@ async function handleFamilyGrouped(
     ) sub
   `;
 
-  // Main grouped query
-  const dataQuery = `
+  // Get paginated family slugs
+  const familyPageQuery = `
     SELECT
       p."familySlug" as family_slug,
       MIN(p.name) as family_name,
-      MIN(p.slug) as slug,
-      MIN(p."imageUrl") as image_url,
-      MIN(p.brand) as brand,
       COUNT(DISTINCT pr."storeId") as store_count,
-      COUNT(*) as option_count,
-      COUNT(DISTINCT p.id) as product_count,
-      MIN(pr.price::numeric) as min_price,
-      MAX(pr.price::numeric) as max_price,
-      bool_or(pr."isOnSale") as is_on_sale,
-      MIN(pr."unitPrice"::numeric) as best_unit_price,
-      (ARRAY_AGG(pr."unitPriceUnit" ORDER BY pr."unitPrice" ASC NULLS LAST))[1] as best_unit_price_unit,
-      (ARRAY_AGG(s.name ORDER BY pr."unitPrice" ASC NULLS LAST))[1] as best_unit_store,
-      (ARRAY_AGG(p.id ORDER BY pr.price ASC))[1] as cheapest_product_id,
-      (ARRAY_AGG(p.slug ORDER BY pr.price ASC))[1] as cheapest_product_slug,
-      (ARRAY_AGG(p.weight ORDER BY pr.price ASC))[1] as cheapest_weight,
-      (ARRAY_AGG(p."weightUnit" ORDER BY pr.price ASC))[1] as cheapest_weight_unit,
-      -- Deals/savings fields: best original price and the sale price for that item
-      MAX(pr."originalPrice"::numeric) as best_original_price,
-      (ARRAY_AGG(pr.price::numeric ORDER BY (COALESCE(pr."originalPrice"::numeric, 0) - pr.price::numeric) DESC NULLS LAST))[1] as best_sale_price,
-      (ARRAY_AGG(pr."originalPrice"::numeric ORDER BY (COALESCE(pr."originalPrice"::numeric, 0) - pr.price::numeric) DESC NULLS LAST))[1] as best_sale_original,
-      (ARRAY_AGG(s.name ORDER BY (COALESCE(pr."originalPrice"::numeric, 0) - pr.price::numeric) DESC NULLS LAST))[1] as best_deal_store,
-      (ARRAY_AGG(s.slug ORDER BY (COALESCE(pr."originalPrice"::numeric, 0) - pr.price::numeric) DESC NULLS LAST))[1] as best_deal_store_slug,
       MAX(pr."scrapedAt") as latest_scraped_at
     FROM "Product" p
     JOIN "Price" pr ON pr."productId" = p.id AND pr."isLatest" = true
@@ -422,128 +403,235 @@ async function handleFamilyGrouped(
     LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
   `;
 
-  const dataParams = [...params, limit, offset];
+  const familyPageParams = [...params, limit, offset];
 
-  // Run count and data queries in parallel
-  const [countResult, families] = await Promise.all([
+  const [countResult, familyPage] = await Promise.all([
     prisma.$queryRawUnsafe<Array<{ total: bigint }>>(countQuery, ...params),
     prisma.$queryRawUnsafe<
       Array<{
         family_slug: string;
         family_name: string;
-        slug: string;
-        image_url: string | null;
-        brand: string | null;
         store_count: bigint;
-        option_count: bigint;
-        product_count: bigint;
-        min_price: number | null;
-        max_price: number | null;
-        is_on_sale: boolean;
-        best_unit_price: number | null;
-        best_unit_price_unit: string | null;
-        best_unit_store: string | null;
-        cheapest_product_id: string | null;
-        cheapest_product_slug: string | null;
-        cheapest_weight: number | null;
-        cheapest_weight_unit: string | null;
-        best_original_price: number | null;
-        best_sale_price: number | null;
-        best_sale_original: number | null;
-        best_deal_store: string | null;
-        best_deal_store_slug: string | null;
         latest_scraped_at: Date | null;
       }>
-    >(dataQuery, ...dataParams),
+    >(familyPageQuery, ...familyPageParams),
   ]);
 
   const total = Number(countResult[0]?.total ?? 0);
   const totalPages = Math.ceil(total / limit);
+  const familySlugs = familyPage.map((f) => f.family_slug);
 
-  // Fetch stores for the current page families only (not all families)
-  const familySlugs = families.map((f) => f.family_slug);
-  let storesByFamily = new Map<
-    string,
-    Array<{ name: string; slug: string; color: string | null }>
-  >();
-
-  if (familySlugs.length > 0) {
-    const storeQuery = `
-      SELECT DISTINCT
-        p."familySlug" as family_slug,
-        s.name,
-        s.slug,
-        s.color
-      FROM "Product" p
-      JOIN "Price" pr ON pr."productId" = p.id AND pr."isLatest" = true
-      JOIN "Store" s ON s.id = pr."storeId"
-      WHERE p."familySlug" = ANY($1) AND p."isActive" = true
-      ORDER BY p."familySlug", s.name
-    `;
-
-    const storeRows = await prisma.$queryRawUnsafe<
-      Array<{
-        family_slug: string;
-        name: string;
-        slug: string;
-        color: string | null;
-      }>
-    >(storeQuery, familySlugs);
-
-    for (const row of storeRows) {
-      if (!storesByFamily.has(row.family_slug)) {
-        storesByFamily.set(row.family_slug, []);
-      }
-      storesByFamily.get(row.family_slug)!.push({
-        name: row.name,
-        slug: row.slug,
-        color: row.color,
-      });
-    }
+  if (familySlugs.length === 0) {
+    return NextResponse.json({
+      data: [],
+      total,
+      page,
+      limit,
+      totalPages,
+      grouped: true,
+      lastUpdated: null,
+    });
   }
 
-  const data = families.map((f) => {
-    // Compute savings: if there's a sale, calculate amount and percentage saved
-    const salePrice = f.best_sale_price != null ? Number(f.best_sale_price) : null;
-    const saleOriginal = f.best_sale_original != null ? Number(f.best_sale_original) : null;
-    const savingsAmount = saleOriginal && salePrice ? saleOriginal - salePrice : null;
-    const savingsPercent = saleOriginal && savingsAmount && saleOriginal > 0
-      ? Math.round((savingsAmount / saleOriginal) * 100)
+  // Fetch ALL products + prices for these families to compute size tiers in JS
+  const productsQuery = `
+    SELECT
+      p.id,
+      p.name,
+      p.slug,
+      p."familySlug" as family_slug,
+      p.weight,
+      p."weightUnit" as weight_unit,
+      p."imageUrl" as image_url,
+      p.brand,
+      pr.price::numeric as price,
+      pr."originalPrice"::numeric as original_price,
+      pr."isOnSale" as is_on_sale,
+      pr."unitPrice"::numeric as unit_price,
+      pr."unitPriceUnit" as unit_price_unit,
+      pr."scrapedAt" as scraped_at,
+      s.name as store_name,
+      s.slug as store_slug,
+      s.color as store_color
+    FROM "Product" p
+    JOIN "Price" pr ON pr."productId" = p.id AND pr."isLatest" = true
+    JOIN "Store" s ON s.id = pr."storeId"
+    WHERE p."familySlug" = ANY($1) AND p."isActive" = true
+    ORDER BY p."familySlug", pr.price ASC
+  `;
+
+  const productRows = await prisma.$queryRawUnsafe<
+    Array<{
+      id: string;
+      name: string;
+      slug: string;
+      family_slug: string;
+      weight: number | null;
+      weight_unit: string | null;
+      image_url: string | null;
+      brand: string | null;
+      price: number;
+      original_price: number | null;
+      is_on_sale: boolean;
+      unit_price: number | null;
+      unit_price_unit: string | null;
+      scraped_at: Date;
+      store_name: string;
+      store_slug: string;
+      store_color: string | null;
+    }>
+  >(productsQuery, familySlugs);
+
+  // Group products by familySlug + sizeTier
+  type TierGroupKey = string; // "familySlug::sizeTier"
+  interface TierGroup {
+    familySlug: string;
+    familyName: string;
+    sizeTier: SizeTier;
+    sizeTierLabel: string;
+    products: typeof productRows;
+  }
+
+  const tierGroups = new Map<TierGroupKey, TierGroup>();
+
+  // Build a lookup from the family page data for canonical names
+  const familyNameMap = new Map<string, string>();
+  for (const f of familyPage) {
+    familyNameMap.set(f.family_slug, f.family_name);
+  }
+
+  for (const row of productRows) {
+    const tier = getSizeTier(row.weight, row.weight_unit, row.name);
+    const key = `${row.family_slug}::${tier}`;
+
+    if (!tierGroups.has(key)) {
+      tierGroups.set(key, {
+        familySlug: row.family_slug,
+        familyName: familyNameMap.get(row.family_slug) ?? row.name,
+        sizeTier: tier,
+        sizeTierLabel: getSizeTierLabel(tier),
+        products: [],
+      });
+    }
+    tierGroups.get(key)!.products.push(row);
+  }
+
+  // Build the response: one entry per family+tier, ordered by family order then tier order
+  const TIER_ORDER: Record<SizeTier, number> = {
+    'single-serve': 0,
+    'small': 1,
+    'regular': 2,
+    'large': 3,
+    'multipack': 4,
+  };
+
+  // Preserve the original family ordering from the paginated query
+  const familyOrder = new Map(familySlugs.map((slug, idx) => [slug, idx]));
+
+  const sortedGroups = Array.from(tierGroups.values()).sort((a, b) => {
+    const familyDiff = (familyOrder.get(a.familySlug) ?? 0) - (familyOrder.get(b.familySlug) ?? 0);
+    if (familyDiff !== 0) return familyDiff;
+    return TIER_ORDER[a.sizeTier] - TIER_ORDER[b.sizeTier];
+  });
+
+  const data = sortedGroups.map((group) => {
+    const products = group.products;
+    // Products are already sorted by price ASC from the SQL query
+    const cheapest = products[0];
+    const uniqueStores = new Set(products.map((p) => p.store_slug));
+
+    // Compute savings: find the product with biggest discount
+    let savingsAmount: number | null = null;
+    let savingsPercent: number | null = null;
+    let salePrice: number | null = null;
+    let originalPrice: number | null = null;
+    let dealStore: string | null = null;
+    let dealStoreSlug: string | null = null;
+
+    for (const p of products) {
+      if (p.original_price != null && p.is_on_sale) {
+        const saving = Number(p.original_price) - Number(p.price);
+        if (savingsAmount === null || saving > savingsAmount) {
+          savingsAmount = saving;
+          salePrice = Number(p.price);
+          originalPrice = Number(p.original_price);
+          dealStore = p.store_name;
+          dealStoreSlug = p.store_slug;
+          savingsPercent = originalPrice > 0
+            ? Math.round((savingsAmount / originalPrice) * 100)
+            : null;
+        }
+      }
+    }
+
+    // Build products array for this tier
+    const tierProducts = products.map((p) => ({
+      id: p.id,
+      slug: p.slug,
+      name: p.name,
+      weight: p.weight != null ? String(p.weight) : null,
+      weightUnit: p.weight_unit,
+      storeName: p.store_name,
+      storeSlug: p.store_slug,
+      price: Number(p.price),
+      originalPrice: p.original_price != null ? Number(p.original_price) : null,
+      isOnSale: p.is_on_sale,
+      unitPrice: p.unit_price != null ? String(p.unit_price) : null,
+      imageUrl: p.image_url,
+    }));
+
+    // Best unit price in this tier
+    const withUnitPrice = products.filter((p) => p.unit_price != null);
+    const bestUnitRow = withUnitPrice.length > 0
+      ? withUnitPrice.reduce((best, p) =>
+          Number(p.unit_price) < Number(best.unit_price) ? p : best
+        )
       : null;
 
     return {
-      familySlug: f.family_slug,
-      familyName: f.family_name,
-      slug: f.slug,
-      imageUrl: f.image_url,
-      brand: f.brand,
-      optionCount: Number(f.option_count),
-      productCount: Number(f.product_count),
-      storeCount: Number(f.store_count),
-      stores: storesByFamily.get(f.family_slug) ?? [],
-      minPrice: f.min_price != null ? Number(f.min_price) : null,
-      maxPrice: f.max_price != null ? Number(f.max_price) : null,
-      bestUnitPrice: f.best_unit_price != null ? Number(f.best_unit_price) : null,
-      bestUnitPriceUnit: f.best_unit_price_unit,
-      bestUnitStore: f.best_unit_store,
-      isOnSale: f.is_on_sale,
-      cheapestProductId: f.cheapest_product_id,
-      cheapestProductSlug: f.cheapest_product_slug,
-      cheapestWeight: f.cheapest_weight != null ? Number(f.cheapest_weight) : null,
-      cheapestWeightUnit: f.cheapest_weight_unit,
+      familySlug: group.familySlug,
+      familyName: group.familyName,
+      sizeTier: group.sizeTier,
+      sizeTierLabel: group.sizeTierLabel,
+      slug: cheapest.slug,
+      imageUrl: cheapest.image_url,
+      brand: cheapest.brand,
+      optionCount: products.length,
+      productCount: new Set(products.map((p) => p.id)).size,
+      storeCount: uniqueStores.size,
+      stores: Array.from(
+        new Map(
+          products.map((p) => [p.store_slug, { name: p.store_name, slug: p.store_slug, color: p.store_color }])
+        ).values()
+      ).sort((a, b) => a.name.localeCompare(b.name)),
+      minPrice: Number(cheapest.price),
+      maxPrice: Number(products[products.length - 1].price),
+      bestUnitPrice: bestUnitRow ? Number(bestUnitRow.unit_price) : null,
+      bestUnitPriceUnit: bestUnitRow?.unit_price_unit ?? null,
+      bestUnitStore: bestUnitRow?.store_name ?? null,
+      isOnSale: products.some((p) => p.is_on_sale),
+      cheapestProductId: cheapest.id,
+      cheapestProductSlug: cheapest.slug,
+      cheapestProductName: cheapest.name,
+      cheapestPrice: Number(cheapest.price),
+      cheapestStore: cheapest.store_name,
+      cheapestStoreSlug: cheapest.store_slug,
+      cheapestWeight: cheapest.weight != null ? Number(cheapest.weight) : null,
+      cheapestWeightUnit: cheapest.weight_unit,
       // Deal-specific fields
       savingsAmount,
       savingsPercent,
       salePrice,
-      originalPrice: saleOriginal,
-      dealStore: f.best_deal_store,
-      dealStoreSlug: f.best_deal_store_slug,
-      latestScrapedAt: f.latest_scraped_at,
+      originalPrice,
+      dealStore,
+      dealStoreSlug,
+      // All products in this family+tier
+      products: tierProducts,
     };
   });
 
-  // Compute the most recent scraped time across all results for metadata
-  const newestScrapedAt = families.reduce((latest, f) => {
+  // Compute the most recent scraped time across all results
+  const newestScrapedAt = familyPage.reduce((latest, f) => {
     if (f.latest_scraped_at) {
       const t = new Date(f.latest_scraped_at).getTime();
       return t > latest ? t : latest;

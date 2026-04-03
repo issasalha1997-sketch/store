@@ -242,9 +242,9 @@ function SearchContent() {
         {/* Results grid */}
         <div className="flex-1 min-w-0">
           {isLoading ? (
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="rounded-xl border p-4 bg-white">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="rounded-2xl border p-4 bg-white">
                   <Skeleton className="h-28 sm:h-32 w-full rounded-xl" />
                   <Skeleton className="mt-3 h-4 w-3/4" />
                   <Skeleton className="mt-2 h-3 w-1/2" />
@@ -272,7 +272,7 @@ function SearchContent() {
           ) : (
             <>
               <motion.div
-                className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4"
+                className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3"
                 initial="initial"
                 animate="animate"
                 variants={{
@@ -281,7 +281,11 @@ function SearchContent() {
               >
                 {results.map((item: Record<string, unknown>) => (
                   <motion.div
-                    key={(item.familySlug as string) || (item.id as string)}
+                    key={
+                      isGrouped
+                        ? `${item.familySlug as string}-${(item.sizeTier as string) || ""}`
+                        : (item.id as string)
+                    }
                     variants={{
                       initial: { opacity: 0, y: 12 },
                       animate: { opacity: 1, y: 0 },
@@ -306,6 +310,12 @@ function SearchContent() {
                         cheapestProductSlug={item.cheapestProductSlug as string | undefined}
                         weight={item.cheapestWeight as number | null | undefined}
                         weightUnit={item.cheapestWeightUnit as string | null | undefined}
+                        sizeTier={item.sizeTier as string | null | undefined}
+                        sizeTierLabel={item.sizeTierLabel as string | null | undefined}
+                        cheapestStore={item.cheapestStore as string | null | undefined}
+                        cheapestStoreSlug={item.cheapestStoreSlug as string | null | undefined}
+                        cheapestProductName={item.cheapestProductName as string | null | undefined}
+                        cheapestPrice={item.cheapestPrice as number | null | undefined}
                       />
                     ) : (
                       <ProductCard
@@ -433,9 +443,9 @@ export default function SearchPage() {
             <Skeleton className="h-11 w-full rounded-full" />
           </div>
           <Skeleton className="h-8 w-48 mb-6" />
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="rounded-xl border p-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="rounded-2xl border p-4">
                 <Skeleton className="h-28 w-full rounded-xl" />
                 <Skeleton className="mt-3 h-4 w-3/4" />
                 <Skeleton className="mt-3 h-6 w-1/3" />
